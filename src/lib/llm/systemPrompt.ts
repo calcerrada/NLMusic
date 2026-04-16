@@ -13,6 +13,6 @@ export function buildSystemPrompt(): string {
     "- If prompt requests changes, preserve intent from previous pattern.",
     "- Do not wrap JSON in markdown fences.",
     "Example output:",
-    '{"bpm":138,"tracks":[{"id":"kick","name":"Kick 909","sample":"bd","steps":[1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0],"volume":0.9,"muted":false,"solo":false}],"strudelCode":"stack(s(\"bd ~ ~ ~ bd ~ ~ ~ bd ~ ~ ~ bd ~ ~ ~\").gain(0.9)).setcpm(69)"}'
+    '{"bpm":138,"tracks":[{"id":"kick","name":"Kick 909","sample":"bd","steps":[1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0],"volume":0.9,"muted":false,"solo":false}],"strudelCode":"stack(s(\"bd ~ ~ ~ bd ~ ~ ~ bd ~ ~ ~ bd ~ ~ ~\").gain(0.9)).cpm(138)"}'
   ].join("\n");
 }

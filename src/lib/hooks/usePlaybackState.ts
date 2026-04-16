@@ -3,10 +3,10 @@
 import { useSessionStore } from '../store/sessionStore';
 
 export function usePlaybackState() {
-  return useSessionStore((s) => ({
-    isGenerating: s.isGenerating,
-    error: s.error,
-    strudelCode: s.strudelCode,
-    bpm: s.bpm,
-  }));
+  const isGenerating = useSessionStore((s) => s.isGenerating);
+  const error = useSessionStore((s) => s.error);
+  const strudelCode = useSessionStore((s) => s.strudelCode);
+  const bpm = useSessionStore((s) => s.bpm);
+
+  return { isGenerating, error, strudelCode, bpm };
 }

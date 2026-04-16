@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import type { TrackJSON, SessionTurn } from '../llm/types';
+import { compileToStrudel } from '../strudel/compiler';
 
 export interface SessionState {
   bpm: number;
@@ -56,8 +57,12 @@ const initialPattern: TrackJSON = {
       solo: false,
     },
   ],
-  strudelCode: 'stack(s("bd ~ ~ ~ bd ~ ~ ~ bd ~ ~ ~ bd ~ ~ ~").gain(0.90), s("~ ~ ~ ~ sd ~ ~ ~ ~ ~ ~ ~ sd ~ ~ ~").gain(0.75), s("hh ~ hh ~ hh ~ hh ~ hh ~ hh ~ hh ~ hh ~").gain(0.55)).setcpm(69.00)',
+  strudelCode: 'stack(s("bd ~ ~ ~ bd ~ ~ ~ bd ~ ~ ~ bd ~ ~ ~").gain(0.90), s("~ ~ ~ ~ sd ~ ~ ~ ~ ~ ~ ~ sd ~ ~ ~").gain(0.75), s("hh ~ hh ~ hh ~ hh ~ hh ~ hh ~ hh ~ hh ~").gain(0.55)).cpm(138.00)',
 };
+
+function compileSessionPattern(bpm: number, tracks: TrackJSON['tracks']) {
+  return compileToStrudel({ bpm, tracks });
+}
 
 export const useSessionStore = create<SessionState>()(
   devtools(
@@ -65,13 +70,21 @@ export const useSessionStore = create<SessionState>()(
       (set) => ({
         bpm: initialPattern.bpm,
         tracks: initialPattern.tracks,
-        strudelCode: initialPattern.strudelCode || '',
+        strudelCode: compileSessionPattern(initialPattern.bpm, initialPattern.tracks),
         turns: [],
         isGenerating: false,
         error: null,
 
-        updateBpm: (bpm) => set({ bpm }),
-        updateTracks: (tracks) => set({ tracks }),
+        updateBpm: (bpm) =>
+          set((state) => ({
+            bpm,
+            strudelCode: compileSessionPattern(bpm, state.tracks),
+          })),
+        updateTracks: (tracks) =>
+          set((state) => ({
+            tracks,
+            strudelCode: compileSessionPattern(state.bpm, tracks),
+          })),
         updateStrudelCode: (strudelCode) => set({ strudelCode }),
         setGenerating: (isGenerating) => set({ isGenerating }),
         setError: (error) => set({ error }),
@@ -81,62 +94,84 @@ export const useSessionStore = create<SessionState>()(
           })),
 
         toggleTrackMute: (trackId) =>
-          set((state) => ({
-            tracks: state.tracks.map((t) =>
+          set((state) => {
+            const tracks = state.tracks.map((t) =>
               t.id === trackId ? { ...t, muted: !t.muted } : t
-            ),
-          })),
+            );
+
+            return {
+              tracks,
+              strudelCode: compileSessionPattern(state.bpm, tracks),
+            };
+          }),
 
         toggleTrackSolo: (trackId) =>
           set((state) => {
             const hasAnySolo = state.tracks.some((t) => t.solo);
             if (hasAnySolo && state.tracks.find((t) => t.id === trackId)?.solo) {
+              const tracks = state.tracks.map((t) =>
+                t.id === trackId ? { ...t, solo: false } : t
+              );
+
               // Unsolo this track
               return {
-                tracks: state.tracks.map((t) =>
-                  t.id === trackId ? { ...t, solo: false } : t
-                ),
+                tracks,
+                strudelCode: compileSessionPattern(state.bpm, tracks),
               };
             }
+
+            const tracks = state.tracks.map((t) =>
+              t.id === trackId ? { ...t, solo: true } : { ...t, solo: false }
+            );
+
             // Solo only this track
             return {
-              tracks: state.tracks.map((t) =>
-                t.id === trackId ? { ...t, solo: true } : { ...t, solo: false }
-              ),
+              tracks,
+              strudelCode: compileSessionPattern(state.bpm, tracks),
             };
           }),
 
         updateTrackStep: (trackId, stepIndex, value) =>
-          set((state) => ({
-            tracks: state.tracks.map((t) =>
+          set((state) => {
+            const tracks = state.tracks.map((t) =>
               t.id === trackId
                 ? {
                     ...t,
                     steps: t.steps.map((s, i) => (i === stepIndex ? value : s)),
                   }
                 : t
-            ),
-          })),
+            );
+
+            return {
+              tracks,
+              strudelCode: compileSessionPattern(state.bpm, tracks),
+            };
+          }),
 
         updateTrackVolume: (trackId, volume) =>
-          set((state) => ({
-            tracks: state.tracks.map((t) =>
+          set((state) => {
+            const tracks = state.tracks.map((t) =>
               t.id === trackId ? { ...t, volume } : t
-            ),
-          })),
+            );
+
+            return {
+              tracks,
+              strudelCode: compileSessionPattern(state.bpm, tracks),
+            };
+          }),
 
         loadPattern: (pattern) =>
           set({
             bpm: pattern.bpm,
             tracks: pattern.tracks,
-            strudelCode: pattern.strudelCode || '',
+            strudelCode: compileSessionPattern(pattern.bpm, pattern.tracks),
           }),
 
         reset: () =>
           set({
             bpm: initialPattern.bpm,
             tracks: initialPattern.tracks,
-            strudelCode: initialPattern.strudelCode || '',
+            strudelCode: compileSessionPattern(initialPattern.bpm, initialPattern.tracks),
             turns: [],
             isGenerating: false,
             error: null,

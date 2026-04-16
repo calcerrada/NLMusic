@@ -17,6 +17,6 @@ export function compileToStrudel(trackJson: TrackJSON): string {
   const codeBlocks = activeTracks.map(trackToCode);
   const stackCode = codeBlocks.length > 0 ? `stack(${codeBlocks.join(", ")})` : 'silence';
 
-  // Strudel often maps CPM roughly as BPM/2 for common 16-step drum loops.
-  return `${stackCode}.setcpm(${(trackJson.bpm / 2).toFixed(2)})`;
+  // In @strudel/web, tempo as pattern method is .cpm(value) (BPM-like value).
+  return `${stackCode}.cpm(${trackJson.bpm.toFixed(2)})`;
 }

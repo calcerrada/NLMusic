@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
 import { usePlaybackState } from '@/lib/hooks/usePlaybackState';
 import { useStrudel } from '@/lib/hooks/useStrudel';
 import { Button } from './primitives/Button';
@@ -8,11 +9,26 @@ import { Card } from './primitives/Card';
 export function PlaybackControls() {
   const { strudelCode, isGenerating } = usePlaybackState();
   const { isPlaying, play, stop, initialized, error: strudelError } = useStrudel();
+  const syncedCodeRef = useRef<string>('');
 
   const handlePlay = async () => {
     if (!strudelCode) return;
+    syncedCodeRef.current = strudelCode;
     await play(strudelCode);
   };
+
+  useEffect(() => {
+    if (!initialized || !isPlaying || !strudelCode) {
+      return;
+    }
+
+    if (syncedCodeRef.current === strudelCode) {
+      return;
+    }
+
+    syncedCodeRef.current = strudelCode;
+    void play(strudelCode);
+  }, [initialized, isPlaying, play, strudelCode]);
 
   return (
     <Card className="flex flex-col gap-3">

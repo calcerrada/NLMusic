@@ -1,142 +1,78 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-
-interface StrudelAPI {
-  evaluate?: (code: string) => Promise<void>;
-  stop?: () => void;
-  isPlaying?: () => boolean;
-}
-
-declare global {
-  interface Window {
-    strudel?: StrudelAPI;
-    Strudel?: any;
-  }
-}
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 /**
- * Hook para inicializar y controlar Strudel en el navegador.
- * Carga Strudel desde CDN y proporciona métodos para ejecutar y parar código.
+ * Hook para integrar @strudel/web en Next.js.
  *
- * Strudel (https://strudel.cc) = TidalCycles en el browser con WebAudio API
- * Permite tocar patrones de código sin instalación local.
+ * API correcta (v1.x):
+ *  - initStrudel()  → inicializa y expone funciones globales (evaluate, hush, samples…)
+ *  - evaluate(code) → evalúa y ejecuta un patrón Strudel (igual que el REPL)
+ *  - hush()         → para toda reproducción en curso
+ *
+ * Docs: https://www.npmjs.com/package/@strudel/web
  */
 export function useStrudel() {
   const [initialized, setInitialized] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const activePatternRef = useRef<string>('');
-  const initCheckRef = useRef<NodeJS.Timeout | null>(null);
+  const initRef = useRef(false);
 
   useEffect(() => {
-    const checkStrudelLoaded = () => {
-      if (typeof window !== 'undefined' && (window.strudel || window.Strudel)) {
+    if (initRef.current) return;
+    initRef.current = true;
+
+    // Dynamic import — evita problemas de SSR con WebAudio API
+    import('@strudel/web')
+      .then(({ initStrudel }) => {
+        initStrudel({
+          // Carga los samples de TidalCycles (bd, sd, hh, cp, etc.)
+          prebake: () =>
+            (globalThis as any).samples?.(
+              'github:tidalcycles/dirt-samples'
+            ),
+        });
         setInitialized(true);
-        console.log('[Strudel] Initialized from CDN');
+        console.log('[Strudel] Initialized via @strudel/web');
+      })
+      .catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        setError(`Strudel init error: ${msg}`);
+        console.error('[Strudel] init error:', err);
+      });
+  }, []);
 
-        if (initCheckRef.current) {
-          clearInterval(initCheckRef.current);
-        }
-        return true;
-      }
-      return false;
-    };
-
-    // Intentar detectar Strudel inmediatamente
-    if (checkStrudelLoaded()) return;
-
-    // Si no está listo, esperar a que se cargue (CDN async)
-    initCheckRef.current = setInterval(() => {
-      if (checkStrudelLoaded()) {
-        setError(null);
-      }
-    }, 500);
-
-    // Timeout: si Strudel no carga en 10s, marcar como inicializado de todos modos
-    // para que la UI no quede bloqueada
-    const timeoutId = setTimeout(() => {
-      if (!initialized) {
-        setInitialized(true); // Fallback: permitir uso incluso sin Strudel
-        console.warn('[Strudel] Timeout waiting for CDN, fallback mode');
-      }
-    }, 10000);
-
-    return () => {
-      if (initCheckRef.current) {
-        clearInterval(initCheckRef.current);
-      }
-      clearTimeout(timeoutId);
-    };
-  }, [initialized]);
-
-  const play = async (code: string) => {
-    if (!initialized) {
-      setError('Strudel no inicializado');
-      console.warn('Strudel no inicializado');
-      return;
-    }
-
+  const play = useCallback(async (code: string) => {
     try {
-      activePatternRef.current = code;
+      const normalizedCode = code
+        .replace(/\.setcpm\(/g, '.cpm(')
+        .replace(/\.setCpm\(/g, '.cpm(');
 
-      // Intentar usar la API real de Strudel
-      if (typeof window !== 'undefined' && window.strudel?.evaluate) {
-        await window.strudel.evaluate(code);
-        console.log('[Strudel] Playing pattern');
-      } else if (typeof window !== 'undefined' && window.Strudel?.evaluate) {
-        await window.Strudel.evaluate(code);
-        console.log('[Strudel] Playing pattern');
-      } else {
-        // Fallback: CDN no cargó correctamente, pero permitir UI
-        console.log('[Strudel] CDN fallback mode - pattern registered:', code);
-      }
-
+      // evaluate() es global después de initStrudel()
+      await (globalThis as any).evaluate(normalizedCode);
       setIsPlaying(true);
       setError(null);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Unknown error';
-      setError(`Strudel execute error: ${msg}`);
-      console.error('Strudel play error:', err);
+      const msg = err instanceof Error ? err.message : String(err);
+      setError(`Strudel play error: ${msg}`);
+      console.error('[Strudel] play error:', err);
     }
-  };
+  }, []);
 
-  const stop = async () => {
+  const stop = useCallback(() => {
     try {
-      if (typeof window !== 'undefined' && window.strudel?.stop) {
-        window.strudel.stop();
-      } else if (typeof window !== 'undefined' && window.Strudel?.stop) {
-        window.Strudel.stop();
-      }
-
-      activePatternRef.current = '';
+      // hush() es global después de initStrudel()
+      (globalThis as any).hush?.();
       setIsPlaying(false);
       setError(null);
-      console.log('[Strudel] Stopped');
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Unknown error';
+      const msg = err instanceof Error ? err.message : String(err);
       setError(`Strudel stop error: ${msg}`);
-      console.error('Strudel stop error:', err);
     }
-  };
+  }, []);
 
-  const reset = async () => {
-    try {
-      await stop();
-      console.log('[Strudel] Reset');
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Unknown error';
-      setError(`Strudel reset error: ${msg}`);
-    }
-  };
+  const reset = useCallback(() => stop(), [stop]);
 
-  return {
-    initialized,
-    isPlaying,
-    error,
-    play,
-    stop,
-    reset,
-    activePattern: activePatternRef.current,
-  };
+  return { initialized, isPlaying, error, play, stop, reset };
 }

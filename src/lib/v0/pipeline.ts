@@ -20,7 +20,7 @@ export async function runV0Pipeline(
     return {
       trackJson: {
         ...parsed,
-        strudelCode: parsed.strudelCode ?? compileToStrudel(parsed)
+        strudelCode: compileToStrudel(parsed)
       },
       usedFallback: false
     };

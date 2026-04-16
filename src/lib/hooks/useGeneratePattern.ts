@@ -5,8 +5,14 @@ import { useSessionStore } from '../store/sessionStore';
 import type { GeneratePatternResponse } from '../types/api';
 
 export function useGeneratePattern() {
-  const { setGenerating, setError, addTurn, loadPattern, turns } =
-    useSessionStore();
+  const setGenerating = useSessionStore((s) => s.setGenerating);
+  const setError = useSessionStore((s) => s.setError);
+  const addTurn = useSessionStore((s) => s.addTurn);
+  const loadPattern = useSessionStore((s) => s.loadPattern);
+  const turns = useSessionStore((s) => s.turns);
+  const bpm = useSessionStore((s) => s.bpm);
+  const tracks = useSessionStore((s) => s.tracks);
+  const strudelCode = useSessionStore((s) => s.strudelCode);
 
   const generate = useCallback(
     async (prompt: string): Promise<GeneratePatternResponse | undefined> => {
@@ -24,7 +30,11 @@ export function useGeneratePattern() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             prompt,
-            context: { turns, previous: null, language: 'mixed' },
+            context: {
+              turns,
+              previous: { bpm, tracks, strudelCode },
+              language: 'mixed',
+            },
           }),
         });
 
@@ -57,8 +67,7 @@ export function useGeneratePattern() {
         setGenerating(false);
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [turns]
+    [addTurn, bpm, loadPattern, setError, setGenerating, strudelCode, tracks, turns]
   );
 
   return { generate };

@@ -6,6 +6,11 @@
       "sourceType": "github",
       "computedHash": "db85045827ebeb83ac8dbc992b69188755eeb74dcf01cbf5e694d58aa494a106"
     },
+    "strudel": {
+      "source": "bfollington/terma",
+      "sourceType": "github",
+      "computedHash": "07602e04f5751aed3a17cc26d11e2e6ab17e23e4747bf392002e70c24711cccd"
+    },
     "vercel-react-best-practices": {
       "source": "vercel-labs/agent-skills",
       "sourceType": "github",
