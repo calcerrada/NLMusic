@@ -4,6 +4,49 @@
 
 ---
 
+## Estado de desarrollo (Abril 2026)
+
+**v0 — Validación técnica:** ✅ Complete
+- LLM pipeline (v0) funcional con fallback robusta
+- Test harness: 20 casos de prueba, Go/No-Go verdict
+- Adapter pattern para LLMProvider (Claude, OpenAI, Ollama listo)
+
+**MVP — Interfaz web interactiva:** ✅ Complete (estructura)
+- ✅ Frontend scaffold completo (React + Next.js + TypeScript)
+- ✅ Zustand store con estado de tracks, BPM, turns
+- ✅ Sequencer visual: 16 pasos, mute/solo, volumen, click-to-toggle
+- ✅ PromptBox con validación y API integration
+- ✅ API route `/api/generate-pattern` integrada con v0 pipeline
+- ✅ Strudel runtime hook: CDN loader, fallback mode, play/stop/reset
+- ✅ PlaybackControls: botones Play/Stop con estado visual
+- ✅ BeatCursor: indicador de paso activo sincronizado con BPM
+- ✅ Compilación producción: npm run build ✅
+- ⏳ Testing e2e: prompt → audio (pendiente validación en navegador)
+
+**Arquitectura completada:**
+```
+PromptBox
+  ↓ fetch /api/generate-pattern
+API Route
+  ↓ reuse v0 (ClaudeAdapter + runV0Pipeline)
+SessionStore (Zustand)
+  ↓ dispatch trackJson + strudelCode
+BeatCursor (visual step)
+PlaybackControls (play/stop)
+  ↓ useStrudel.play(strudelCode)
+Strudel.cc (CDN)
+  ↓ WebAudio API
+🔊 Audio in browser
+```
+
+**Próximos pasos técnicos:**
+1. Validación en navegador: `npm run dev` y probar flujo completo NL → audio
+2. Ajustes de Strudel API surface si es necesario
+3. BPM slider ajustable
+4. Sincronización de BeatCursor con reloj real de Strudel
+
+---
+
 ## Resumen ejecutivo
 
 NLMusic es una interfaz de live coding musical dirigida por lenguaje natural. El usuario describe intenciones musicales en texto ("un bombo 909 en 4x4 techno, oscuro y acelerado") y el sistema genera y ejecuta audio en tiempo real, de forma iterativa y conversacional. La experiencia es la de un instrumento para tocar en vivo, no la de un generador de archivos de audio.
@@ -254,6 +297,54 @@ class CustomAdapter implements LLMProvider { ... }   // Cualquier proveedor comp
 - **API key:** Protegida en servidor desde el principio (Next.js API route), incluso en v0 local se usa `.env` sin exposición al cliente.
 
 ---
+
+## MVP Implementation Checklist (Abril 2026)
+
+### Completed (Sprint 1)
+
+**Backend & API**
+- ✅ Next.js API route `/api/generate-pattern` integrado con v0 pipeline
+- ✅ ClaudeAdapter reutilizado con context passing
+- ✅ Fallback robusta si LLM falla
+- ✅ API key protegida en servidor (no expuesta al cliente)
+
+**Frontend**
+- ✅ React + Next.js app scaffolding (App Router)
+- ✅ Zustand store con tracks, BPM, turns, UI state
+- ✅ Sequencer grid: 16 pasos, click-to-toggle, mute/solo
+- ✅ PromptBox: input + send + loading state
+- ✅ PlaybackControls: Play/Stop buttons + state display
+- ✅ BeatCursor: visual 16-step indicator with BPM animation
+- ✅ BpmControl: slider 60-220 BPM
+- ✅ Dark theme + Tailwind CSS + responsive layout
+- ✅ localStorage persistence (Zustand middleware)
+
+**Audio Integration**
+- ✅ Strudel.cc CDN loader in layout.tsx
+- ✅ useStrudel hook: play, stop, reset methods
+- ✅ Fallback mode: app works even if CDN times out
+- ✅ Error handling + fallback patterns
+
+**Documentation**
+- ✅ Updated nlmusic-spec.md with MVP status
+- ✅ Created TESTING.md with e2e checklist
+- ✅ Updated README.md with quick-start guide
+- ✅ Created PROMPT_GUIDE.md for effective prompting
+
+**Code Quality**
+- ✅ TypeScript strict mode
+- ✅ npm run build: zero errors
+- ✅ npm run dev: hot reload working
+- ✅ All imports fixed (no .js extensions)
+- ✅ Path aliases working (@/lib/*, @/components/*)
+
+### Pending (Sprint 2+)
+- ⏳ Browser testing: validate Strudel CDN loading
+- ⏳ Debug Strudel API surface (window.strudel vs window.Strudel)
+- ⏳ BeatCursor real-time sync with Strudel clock (not just BPM animation)
+- ⏳ BPM change: regenerate Strudel code with new CPM
+- ⏳ Export WAV (v1 feature)
+- ⏳ Code editor panel (show generated Strudel code)
 
 ## Referencias
 

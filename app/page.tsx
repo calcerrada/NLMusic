@@ -2,6 +2,9 @@
 
 import { PromptBox } from '@/components/PromptBox';
 import { Sequencer } from '@/components/Sequencer';
+import { PlaybackControls } from '@/components/PlaybackControls';
+import { BeatCursor } from '@/components/BeatCursor';
+import { BpmControl } from '@/components/BpmControl';
 import { useSessionStore } from '@/lib/store/sessionStore';
 
 export default function Home() {
@@ -30,14 +33,41 @@ export default function Home() {
           </div>
         )}
 
+        {/* BPM Control */}
+        <section className="mb-6">
+          <BpmControl />
+        </section>
+
+        {/* Beat Cursor */}
+        <section className="mb-6">
+          <BeatCursor />
+        </section>
+
+        {/* Playback Controls */}
+        <section className="mb-6">
+          <PlaybackControls />
+        </section>
+
         {/* Sequencer */}
-        <section>
+        <section className="mb-8">
           <Sequencer />
         </section>
 
         {/* Info */}
         <footer className="mt-8 text-xs text-gray-600">
           <p>v0.1 — MVP Technical Preview</p>
+          <p className="mt-1">
+            Powered by{' '}
+            <a
+              href="https://strudel.cc"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-500 hover:underline"
+            >
+              Strudel
+            </a>{' '}
+            (TidalCycles in the browser)
+          </p>
         </footer>
       </div>
     </main>
