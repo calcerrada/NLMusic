@@ -1,4 +1,4 @@
-import type { Track, TrackJSON } from "../llm/types.js";
+import type { Track, TrackJSON } from "../llm/types";
 
 function stepsToPattern(sample: string, steps: number[]): string {
   return steps.map((step) => (step === 1 ? sample : "~")).join(" ");

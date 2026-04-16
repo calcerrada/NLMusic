@@ -1,26 +1,35 @@
 {
-  "name": "talkingtech",
-  "version": "1.0.0",
+  "name": "nlmusic",
+  "version": "0.1.0",
   "private": true,
-  "type": "module",
-  "main": "dist/index.js",
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "start": "tsx src/index.ts",
-    "start:fallback": "tsx src/index.ts --fallback",
-    "check": "tsc --noEmit"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "v0:cli": "tsx src/index.ts",
+    "v0:test": "tsx src/v0-test.ts"
   },
   "keywords": [],
   "author": "",
   "license": "MIT",
-  "description": "NLMusic v0 technical validation pipeline",
+  "description": "NLMusic MVP: live coding drums with natural language",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.89.0",
+    "autoprefixer": "^10.5.0",
     "dotenv": "^17.4.2",
-    "zod": "^4.3.6"
+    "next": "^16.2.4",
+    "postcss": "^8.5.10",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5",
+    "tailwindcss": "^4.2.2",
+    "zod": "^4.3.6",
+    "zustand": "^5.0.12"
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "^4.2.2",
     "@types/node": "^25.6.0",
+    "@types/react": "19.2.14",
     "tsx": "^4.21.0",
     "typescript": "^6.0.2"
   }

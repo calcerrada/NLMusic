@@ -1,7 +1,7 @@
-import type { LLMProvider, SessionContext, TrackJSON } from "../llm/types.js";
-import { compileToStrudel } from "../strudel/compiler.js";
-import { validateTrackJson } from "../validation/trackSchema.js";
-import { fallbackPattern } from "./fallbackPattern.js";
+import type { LLMProvider, SessionContext, TrackJSON } from "../llm/types";
+import { compileToStrudel } from "../strudel/compiler";
+import { validateTrackJson } from "../validation/trackSchema";
+import { fallbackPattern } from "./fallbackPattern";
 
 export interface PipelineResult {
   trackJson: TrackJSON;

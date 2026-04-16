@@ -146,12 +146,12 @@ class CustomAdapter implements LLMProvider { ... }   // Cualquier proveedor comp
 
 | Capa | Tecnología | Razón |
 |---|---|---|
-| Frontend | React + TypeScript + Vite | DX rápida, ecosistema rico |
+| Frontend | React + TypeScript + Next.js | App router, API routes en el mismo proyecto |
 | Audio engine | Strudel.cc | TidalCycles en el browser, samples incluidos |
-| Estado | Zustand | Sincronización tracks ↔ UI ↔ Strudel en tiempo real |
+| Estado | Zustand + localStorage | Sincronización tracks ↔ UI ↔ Strudel; persistencia local de sesión |
 | Estilos | Tailwind CSS | Prototipado rápido del secuenciador y faders |
-| LLM principal | Claude claude-sonnet-4-20250514 | Mejor generación de código con contexto musical |
-| Backend | Next.js API routes (o Hono) | Proteger API key y gestionar contexto de sesión |
+| LLM principal | Claude claude-sonnet-4-6 | Mejor generación de código con contexto musical |
+| Backend | Next.js API routes | Proteger API key; contexto de sesión gestionado en cliente |
 | Deploy | Vercel | Sin fricción, gratuito para uso personal |
 | Desktop futuro | Tauri wrapping la web app | Latencia ultrabaja si se necesita |
 
@@ -248,10 +248,10 @@ class CustomAdapter implements LLMProvider { ... }   // Cualquier proveedor comp
 | Calidad musical varía entre modelos LLM | Medio | El adapter permite testear y elegir; Claude es el benchmark inicial |
 | WebAudio en Safari tiene comportamiento diferente | Bajo | Strudel lo abstrae en gran medida; testear desde el principio |
 
-### Decisiones pendientes
-- ¿El backend es Next.js API routes o un servidor Hono independiente?
-- ¿El contexto de sesión se gestiona en el cliente (Zustand) o se persiste en backend?
-- ¿El v0 usa directamente la API de Anthropic desde el cliente (con API key expuesta) para ir más rápido, o ya montamos el proxy desde el principio?
+### Decisiones tomadas ✅
+- **Backend:** Next.js API routes (monolito en Vercel, sin servidor separado).
+- **Contexto de sesión:** Solo en cliente — Zustand + localStorage para MVP.
+- **API key:** Protegida en servidor desde el principio (Next.js API route), incluso en v0 local se usa `.env` sin exposición al cliente.
 
 ---
 

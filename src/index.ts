@@ -1,7 +1,7 @@
 import "dotenv/config";
-import { ClaudeAdapter } from "./lib/llm/providers/claude.adapter.js";
-import type { SessionContext } from "./lib/llm/types.js";
-import { runV0Pipeline } from "./lib/v0/pipeline.js";
+import { ClaudeAdapter } from "./lib/llm/providers/claude.adapter";
+import type { SessionContext } from "./lib/llm/types";
+import { runV0Pipeline } from "./lib/v0/pipeline";
 
 function readPromptFromArgs(): string {
   const args = process.argv.slice(2);
@@ -33,6 +33,7 @@ function createContext(): SessionContext {
 async function main(): Promise<void> {
   const prompt = readPromptFromArgs();
   const apiKey = process.env.ANTHROPIC_API_KEY;
+  const model = process.env.ANTHROPIC_MODEL;
   const forceFallback = shouldForceFallback();
 
   if (!apiKey && !forceFallback) {
@@ -45,7 +46,11 @@ async function main(): Promise<void> {
           throw new Error("Forced fallback enabled");
         }
       }
-    : new ClaudeAdapter({ apiKey: apiKey as string });
+    : new ClaudeAdapter({
+        apiKey: apiKey as string,
+        model
+      });
+
   const result = await runV0Pipeline(provider, prompt, createContext());
 
   if (result.usedFallback) {

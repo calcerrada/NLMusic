@@ -1,4 +1,4 @@
-import type { TrackJSON } from "../llm/types.js";
+import type { TrackJSON } from "../llm/types";
 
 export function fallbackPattern(): TrackJSON {
   return {

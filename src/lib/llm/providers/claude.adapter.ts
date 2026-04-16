@@ -1,6 +1,8 @@
 import Anthropic from "@anthropic-ai/sdk";
-import type { LLMProvider, SessionContext, TrackJSON } from "../types.js";
-import { buildSystemPrompt } from "../systemPrompt.js";
+import type { LLMProvider, SessionContext, TrackJSON } from "../types";
+import { buildSystemPrompt } from "../systemPrompt";
+
+const DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-4-6";
 
 interface ClaudeAdapterOptions {
   apiKey: string;
@@ -39,7 +41,7 @@ export class ClaudeAdapter implements LLMProvider {
 
   constructor(options: ClaudeAdapterOptions) {
     this.client = new Anthropic({ apiKey: options.apiKey });
-    this.model = options.model ?? "claude-sonnet-4-20250514";
+    this.model = options.model ?? DEFAULT_ANTHROPIC_MODEL;
   }
 
   async generatePattern(prompt: string, context: SessionContext): Promise<TrackJSON> {
