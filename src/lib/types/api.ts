@@ -1,17 +1,6 @@
-import type { TrackJSON, SessionTurn } from '../llm/types';
+import type { TrackJSON } from './audio';
+import type { SessionContext } from './session';
 
-export interface GeneratePatternRequest {
-  prompt: string;
-  context: {
-    turns: SessionTurn[];
-    previous?: TrackJSON | null;
-    language?: 'es' | 'en' | 'mixed';
-  };
-}
-
-export interface GeneratePatternResponse {
-  success: boolean;
-  trackJson?: TrackJSON;
-  usedFallback?: boolean;
-  error?: string;
+export interface LLMProvider {
+  generatePattern(prompt: string, context: SessionContext): Promise<TrackJSON>;
 }

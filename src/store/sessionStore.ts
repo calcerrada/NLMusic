@@ -2,8 +2,8 @@
 
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
-import type { Track, TrackJSON } from '@/types';
-import { compileToStrudel } from '@/lib/strudel/compiler';
+import type { Track, TrackJSON } from '@lib/types';
+import { compileToStrudel } from '@features/audio';
 
 type ActiveTab = 'sequencer' | 'code';
 
@@ -38,10 +38,9 @@ function compileCode(bpm: number, tracks: Track[]): string {
   return compileToStrudel({ bpm, tracks });
 }
 
-// Mock track: kick on steps 1, 5, 9, 13
-const mockKickTrack: Track = {
+const defaultKickTrack: Track = {
   id: 'kick-1',
-  name: 'Kick Test',
+  name: 'Kick',
   tag: 'kick',
   steps: [0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0] as (0 | 1)[],
   volume: 0.8,
@@ -49,7 +48,7 @@ const mockKickTrack: Track = {
   solo: false,
 };
 
-const initialTracks: Track[] = [mockKickTrack];
+const initialTracks: Track[] = [defaultKickTrack];
 const initialBpm = 138;
 
 export const useSessionStore = create<SessionStore>()(
@@ -70,10 +69,10 @@ export const useSessionStore = create<SessionStore>()(
           })),
 
         setBpm: (bpm) =>
-          set((state) => ({
-            bpm: Math.min(220, Math.max(60, bpm)),
-            currentCode: compileCode(Math.min(220, Math.max(60, bpm)), state.tracks),
-          })),
+          set((state) => {
+            const clamped = Math.min(220, Math.max(60, bpm));
+            return { bpm: clamped, currentCode: compileCode(clamped, state.tracks) };
+          }),
 
         setPlaying: (value) => set({ isPlaying: value }),
         setActiveTab: (tab) => set({ activeTab: tab }),

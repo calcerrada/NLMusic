@@ -13,53 +13,76 @@ NLMusic es una interfaz de **live coding musical dirigida por lenguaje natural**
 
 ## Convenciones de código
 - **Componentes:** funcionales con hooks, named exports, un componente por archivo
-- **Tipos:** definidos en `src/types/index.ts`, importados con `@/types`
-- **Path aliases:** `@/components/*`, `@/lib/*`, `@/hooks/*`, `@/types/*`, `@/store/*`
+- **Tipos:** definidos en `src/lib/types/` (split: `audio.ts`, `session.ts`, `api.ts`), importados con `@lib/types`
+- **Path aliases:** `@features/*` → `./src/features/*`, `@lib/*` → `./src/lib/*`, `@store/*` → `./src/store/*`
+- **Barrel exports:** cada feature expone un `index.ts` público. Imports cross-feature usan el barrel (`@features/audio`), imports intra-feature usan rutas relativas
 - **Nunca** usar `any`; preferir tipos explícitos o `unknown`
-- **Hooks personalizados** en `src/hooks/` para lógica reutilizable (useStrudel, useSessionStore, useBeatClock)
+- **Hooks personalizados** colocados en `hooks/` dentro de su feature (ej: `src/features/audio/hooks/useBeatClock.ts`)
 - **No** lógica de negocio en componentes UI — delegar a hooks y store
 
 ## Estructura de directorios
 ```
 src/
 ├── app/
-│   ├── layout.tsx          # Fuentes + Strudel CDN loader
-│   ├── page.tsx            # Layout principal de la app
+│   ├── layout.tsx              # Fuentes + globals
+│   ├── page.tsx                # Layout principal de la app
+│   ├── globals.css             # Variables CSS del design system
 │   └── api/
 │       └── generate-pattern/
-│           └── route.ts    # Next.js API route → ClaudeAdapter
-├── components/
+│           └── route.ts        # Next.js API route → pipeline
+│
+├── features/
+│   ├── audio/
+│   │   ├── hooks/
+│   │   │   ├── useStrudel.ts   # play(), stop(), isReady
+│   │   │   └── useBeatClock.ts # Cursor sincronizado con BPM
+│   │   ├── compiler.ts         # TrackJSON → código Strudel
+│   │   └── index.ts            # Barrel export
+│   ├── sequencer/
+│   │   ├── components/
+│   │   │   ├── TrackZone.tsx    # Contenedor de pistas + empty state
+│   │   │   ├── TrackCard.tsx    # Pista individual
+│   │   │   ├── Sequencer.tsx    # Grid de 16 pasos
+│   │   │   ├── StepButton.tsx   # Paso individual clickable
+│   │   │   ├── MiniWaveform.tsx # Mini visualización decorativa
+│   │   │   └── VolumeSlider.tsx # Control de volumen por pista
+│   │   └── index.ts
 │   ├── transport/
-│   │   ├── TransportBar.tsx      # Play/Stop + BPM + BarIndicator
-│   │   ├── BpmControl.tsx        # Número con botones +/-
-│   │   └── BarIndicator.tsx      # 4 rectángulos, beat activo
-│   ├── tracks/
-│   │   ├── TrackZone.tsx         # Contenedor de pistas + empty state
-│   │   ├── TrackCard.tsx         # Pista individual
-│   │   ├── Sequencer.tsx         # Grid de 16 pasos
-│   │   ├── StepButton.tsx        # Paso individual clickable
-│   │   └── MiniWaveform.tsx      # Mini visualización de onda por pista
-│   ├── code-view/
-│   │   └── StrudelCodePanel.tsx  # Código generado + osciloscopio canvas
-│   └── prompt/
-│       └── PromptBox.tsx         # Textarea + botón enviar
-├── hooks/
-│   ├── useStrudel.ts       # play(), stop(), reset(), evaluateCode()
-│   ├── useBeatClock.ts     # Beat cursor sincronizado con BPM
-│   └── usePatternGen.ts    # Llamada a /api/generate-pattern + gestión de estado
-├── store/
-│   └── sessionStore.ts     # Zustand store: tracks, bpm, turns, ui state
+│   │   ├── components/
+│   │   │   ├── TransportBar.tsx  # Play/Stop + BPM + BarIndicator
+│   │   │   ├── PlayControls.tsx  # Botón play/stop con estado
+│   │   │   ├── BpmControl.tsx    # Número con botones +/-
+│   │   │   └── BarIndicator.tsx  # 4 rectángulos, beat activo
+│   │   └── index.ts
+│   ├── prompt/
+│   │   ├── components/
+│   │   │   └── PromptBox.tsx     # Textarea + botón enviar
+│   │   ├── hooks/
+│   │   │   └── usePatternGen.ts  # Llamada a /api/generate-pattern
+│   │   └── index.ts
+│   └── code-view/
+│       ├── components/
+│       │   └── StrudelCodePanel.tsx # Código generado + osciloscopio
+│       └── index.ts
+│
 ├── lib/
-│   ├── adapters/
-│   │   ├── LLMProvider.ts        # Interfaz común
-│   │   ├── ClaudeAdapter.ts      # Implementación Anthropic
-│   │   └── OllamaAdapter.ts      # Implementación local (futura)
-│   ├── strudel/
-│   │   ├── compiler.ts           # TrackJSON → código Strudel
-│   │   └── systemPrompt.ts       # System prompt musical para el LLM
-│   └── types.ts                  # Re-export de @/types
-└── types/
-    └── index.ts            # TrackJSON, Track, SessionContext, etc.
+│   ├── llm/
+│   │   ├── adapters/
+│   │   │   └── claude.adapter.ts  # Implementación Anthropic
+│   │   ├── prompts/
+│   │   │   └── systemPrompt.ts    # System prompt musical
+│   │   ├── pipeline.ts            # Pipeline v0 (adapter + validación + fallback)
+│   │   ├── fallbackPattern.ts     # Patrón fallback si LLM falla
+│   │   └── validation.ts          # Schema Zod para TrackJSON
+│   └── types/
+│       ├── audio.ts               # Track, TrackJSON, TrackTag
+│       ├── session.ts             # SessionContext, SessionTurn
+│       ├── api.ts                 # LLMProvider
+│       ├── strudel-web.d.ts       # Tipos para @strudel/web
+│       └── index.ts               # Re-exports públicos
+│
+└── store/
+    └── sessionStore.ts            # Zustand store: tracks, bpm, turns, ui
 ```
 
 ## Modelo de datos central (TrackJSON)

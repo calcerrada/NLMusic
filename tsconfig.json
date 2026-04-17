@@ -18,14 +18,14 @@
     "noEmit": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": [
-        "./src/*"
+      "@features/*": [
+        "./src/features/*"
       ],
-      "@/components/*": [
-        "./src/components/*"
-      ],
-      "@/lib/*": [
+      "@lib/*": [
         "./src/lib/*"
+      ],
+      "@store/*": [
+        "./src/store/*"
       ]
     },
     "allowJs": true,
