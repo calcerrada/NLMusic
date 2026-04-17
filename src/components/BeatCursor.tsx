@@ -12,10 +12,11 @@ export function BeatCursor() {
   const [currentStep, setCurrentStep] = useState(0);
 
   useEffect(() => {
+    // Cada paso del secuenciador representa una negra (1 beat).
     // Por ahora, animación simple: ciclar a través de los 16 pasos
     // En producción, sincronizar con el clock de Strudel
-    
-    const msPerStep = (60000 / bpm) / 4; // 4 pasos por beat
+
+    const msPerStep = 60000 / bpm;
     
     const interval = setInterval(() => {
       setCurrentStep((prev) => (prev + 1) % 16);

@@ -1,75 +1,53 @@
 'use client';
 
-import { PromptBox } from '@/components/PromptBox';
-import { Sequencer } from '@/components/Sequencer';
-import { PlaybackControls } from '@/components/PlaybackControls';
-import { BeatCursor } from '@/components/BeatCursor';
-import { BpmControl } from '@/components/BpmControl';
-import { useSessionStore } from '@/lib/store/sessionStore';
+import { TransportBar } from '@/components/transport/TransportBar';
+import { TrackZone } from '@/components/tracks/TrackZone';
+import { StrudelCodePanel } from '@/components/code-view/StrudelCodePanel';
+import { PromptBox } from '@/components/prompt/PromptBox';
+import { useSessionStore } from '@/store/sessionStore';
 
 export default function Home() {
-  const { error } = useSessionStore();
+  const activeTab = useSessionStore((s) => s.activeTab);
+  const setActiveTab = useSessionStore((s) => s.setActiveTab);
 
   return (
-    <main className="min-h-screen bg-dark p-6">
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <header className="mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">NLMusic</h1>
-          <p className="text-gray-400">
-            Live coding drums con lenguaje natural
-          </p>
-        </header>
+    <main className="relative min-h-screen bg-bg">
+      <TransportBar />
 
-        {/* Prompt Box */}
-        <section className="mb-6">
-          <PromptBox />
+      <div className="mx-auto flex h-screen max-w-[1100px] flex-col pt-[64px] pb-[124px]">
+        <div className="flex h-[42px] items-end gap-1 border-b border-[var(--border)] bg-[var(--surface)] px-5">
+          <button
+            type="button"
+            onClick={() => setActiveTab('sequencer')}
+            className={[
+              'rounded-t-[8px] border border-b-0 px-4 py-2 text-[11px] uppercase tracking-[0.12em] transition-all',
+              activeTab === 'sequencer'
+                ? 'border-[var(--border-active)] bg-[rgba(0,255,200,0.08)] text-[var(--cyan)]'
+                : 'border-transparent bg-transparent text-[var(--text-dim)] hover:text-[var(--text)]',
+            ].join(' ')}
+          >
+            Sequencer
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('code')}
+            className={[
+              'rounded-t-[8px] border border-b-0 px-4 py-2 text-[11px] uppercase tracking-[0.12em] transition-all',
+              activeTab === 'code'
+                ? 'border-[var(--border-active)] bg-[rgba(0,255,200,0.08)] text-[var(--cyan)]'
+                : 'border-transparent bg-transparent text-[var(--text-dim)] hover:text-[var(--text)]',
+            ].join(' ')}
+          >
+            Strudel Code
+          </button>
+        </div>
+
+        <section className="min-h-0 flex-1 overflow-hidden">
+          {activeTab === 'sequencer' ? <TrackZone /> : <StrudelCodePanel />}
         </section>
-
-        {/* Error Display */}
-        {error && (
-          <div className="mb-4 p-3 bg-red-900 text-red-200 rounded text-sm">
-            {error}
-          </div>
-        )}
-
-        {/* BPM Control */}
-        <section className="mb-6">
-          <BpmControl />
-        </section>
-
-        {/* Beat Cursor */}
-        <section className="mb-6">
-          <BeatCursor />
-        </section>
-
-        {/* Playback Controls */}
-        <section className="mb-6">
-          <PlaybackControls />
-        </section>
-
-        {/* Sequencer */}
-        <section className="mb-8">
-          <Sequencer />
-        </section>
-
-        {/* Info */}
-        <footer className="mt-8 text-xs text-gray-600">
-          <p>v0.1 — MVP Technical Preview</p>
-          <p className="mt-1">
-            Powered by{' '}
-            <a
-              href="https://strudel.cc"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-500 hover:underline"
-            >
-              Strudel
-            </a>{' '}
-            (TidalCycles in the browser)
-          </p>
-        </footer>
       </div>
+
+      <PromptBox />
     </main>
   );
 }

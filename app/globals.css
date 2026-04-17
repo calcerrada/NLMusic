@@ -2,42 +2,94 @@
 @tailwind components;
 @tailwind utilities;
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+:root {
+  --bg: #0a0a0c;
+  --surface: #111116;
+  --surface2: #1a1a22;
+  --border: rgba(255, 255, 255, 0.07);
+  --border-active: rgba(0, 255, 200, 0.3);
+  --cyan: #00ffc8;
+  --amber: #ffaa00;
+  --violet: #b482ff;
+  --red: #ff4466;
+  --text: #e8e8f0;
+  --text-dim: rgba(232, 232, 240, 0.4);
+  --text-muted: rgba(232, 232, 240, 0.2);
 }
 
 body {
-  background-color: #0a0a0a;
-  color: #e0e0e0;
+  margin: 0;
+  background: radial-gradient(circle at 10% -10%, #171723 0%, var(--bg) 45%), var(--bg);
+  color: var(--text);
+  font-family: var(--font-jetbrains), ui-monospace, monospace;
 }
 
-button {
-  cursor: pointer;
-  transition: all 0.2s;
+* {
+  box-sizing: border-box;
 }
 
-button:hover {
-  opacity: 0.8;
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
 }
 
-button:active {
-  transform: scale(0.98);
+*::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 999px;
 }
 
-input,
-textarea {
-  background-color: #1a1a1a;
-  border: 1px solid #333;
-  color: #e0e0e0;
-  padding: 0.5rem;
-  border-radius: 0.25rem;
+.volume-slider {
+  appearance: none;
+  background: var(--border);
+  border-radius: 999px;
 }
 
-input:focus,
-textarea:focus {
-  outline: none;
-  border-color: #666;
-  box-shadow: 0 0 0 2px rgba(102, 102, 102, 0.1);
+.volume-slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: none;
+  background: var(--cyan);
+  box-shadow: 0 0 6px rgba(0, 255, 200, 0.4);
+}
+
+.volume-slider::-moz-range-thumb {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: none;
+  background: var(--cyan);
+  box-shadow: 0 0 6px rgba(0, 255, 200, 0.4);
+}
+
+@keyframes blink {
+  0%,
+  50% {
+    opacity: 1;
+  }
+  51%,
+  100% {
+    opacity: 0;
+  }
+}
+
+.code-cursor {
+  animation: blink 1s infinite;
+}
+
+@keyframes pulse-dot {
+  0% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.6;
+  }
+}
+
+.animate-pulse-dot {
+  animation: pulse-dot 1s ease-in-out infinite;
 }
