@@ -27,7 +27,7 @@ export function useBeatClock(): BeatClockState {
       setStep((prev) => (prev + 1) % 16);
     }, interval);
 
-    
+
     return () => clearInterval(timerId);
   }, [bpm, isPlaying]);
 
@@ -37,3 +37,4 @@ export function useBeatClock(): BeatClockState {
     isPlaying,
   };
 }
+
