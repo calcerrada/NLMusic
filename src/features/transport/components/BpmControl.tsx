@@ -7,7 +7,7 @@ export function BpmControl() {
   const setBpm = useSessionStore((s) => s.setBpm);
 
   return (
-    <div className="flex items-center gap-2.5">
+    <div className="flex items-center gap-4 mr-3">
       <span className="text-[9px] uppercase tracking-[0.18em] text-[var(--text-muted)]">BPM</span>
       <button
         type="button"

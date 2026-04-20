@@ -2,7 +2,6 @@
 
 import type { Track } from '@lib/types';
 import { useSessionStore } from '@store/sessionStore';
-import { MiniWaveform } from './MiniWaveform';
 import { Sequencer } from './Sequencer';
 import { VolumeSlider } from './VolumeSlider';
 
@@ -24,10 +23,8 @@ export function TrackCard({ track, activeStep }: TrackCardProps) {
         track.muted ? 'opacity-45' : 'opacity-100',
       ].join(' ')}
     >
-      <div className="mb-3 flex items-center justify-between gap-3">
+      <div className="mb-3 flex min-h-[38px] items-center justify-between gap-3 py-1">
         <span className="text-[12px] font-semibold text-[var(--text)]">{track.name}</span>
-
-        <MiniWaveform tag={tag} seed={track.id} />
 
         <span className="rounded-[999px] border border-[var(--border)] px-2 py-0.5 text-[9px] uppercase tracking-[0.12em] text-[var(--text-dim)]">
           {tag}
@@ -38,10 +35,10 @@ export function TrackCard({ track, activeStep }: TrackCardProps) {
           <button
             type="button"
             className={[
-              'h-6 w-6 rounded-[4px] border text-[10px] font-semibold transition-all',
+              'h-7 w-7 rounded-[4px] border text-[11px] font-semibold transition-all',
               track.muted
-                ? 'border-[var(--red)] bg-[rgba(255,68,102,0.14)] text-[var(--red)]'
-                : 'border-[var(--border)] text-[var(--text-dim)] hover:border-[var(--border-active)]',
+                ? 'border-[var(--red)] bg-[var(--red)] text-white'
+                : 'border-[var(--border)] bg-[var(--surface2)] text-[var(--text)] hover:border-[var(--border-active)]',
             ].join(' ')}
             onClick={() => toggleMute(track.id)}
           >
@@ -50,10 +47,10 @@ export function TrackCard({ track, activeStep }: TrackCardProps) {
           <button
             type="button"
             className={[
-              'h-6 w-6 rounded-[4px] border text-[10px] font-semibold transition-all',
+              'h-7 w-7 rounded-[4px] border text-[11px] font-semibold transition-all',
               track.solo
-                ? 'border-[var(--amber)] bg-[rgba(255,170,0,0.14)] text-[var(--amber)]'
-                : 'border-[var(--border)] text-[var(--text-dim)] hover:border-[var(--border-active)]',
+                ? 'border-[var(--amber)] bg-[var(--amber)] text-black'
+                : 'border-[var(--border)] bg-[var(--surface2)] text-[var(--text)] hover:border-[var(--border-active)]',
             ].join(' ')}
             onClick={() => toggleSolo(track.id)}
           >

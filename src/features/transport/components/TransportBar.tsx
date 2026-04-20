@@ -33,7 +33,10 @@ export function TransportBar() {
           gap: 24,
         }}
       >
-        <span className="absolute left-5 text-[11px] uppercase tracking-[0.18em] text-[var(--text-muted)]">
+        <span
+          className="text-[11px] uppercase tracking-[0.18em] text-[var(--text-muted)]"
+          style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)' }}
+        >
           NLMusic
         </span>
         <PlayControls strudel={strudel} />

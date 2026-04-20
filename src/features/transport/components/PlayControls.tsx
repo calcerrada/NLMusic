@@ -56,7 +56,7 @@ export function PlayControls({ strudel }: PlayControlsProps) {
   };
 
   return (
-    <div className="flex items-center gap-2.5">
+    <div className="flex items-center gap-3 mr-3">
       <span
         className={[
           'h-[5px] w-[5px] rounded-full transition-all',
@@ -69,7 +69,7 @@ export function PlayControls({ strudel }: PlayControlsProps) {
         aria-label="Stop"
         onClick={handleStop}
         className={[
-          'h-7 w-7 rounded-[6px] border text-[12px] leading-none transition-all',
+          'h-8 w-8 rounded-[6px] border text-[15px] leading-none transition-all',
           stopFlash
             ? 'border-[var(--cyan)] bg-[rgba(0,255,200,0.16)] text-[var(--cyan)]'
             : 'border-[var(--border)] bg-transparent text-[var(--text)] hover:border-[var(--border-active)]',
@@ -83,7 +83,7 @@ export function PlayControls({ strudel }: PlayControlsProps) {
         aria-label="Play"
         onClick={() => void handlePlayToggle()}
         className={[
-          'h-7 w-7 rounded-[6px] border text-[12px] leading-none transition-all',
+          'h-8 w-8 rounded-[6px] border text-[15px] leading-none transition-all',
           isPlaying
             ? 'border-[var(--cyan)] bg-[rgba(0,255,200,0.12)] text-[var(--cyan)] shadow-[0_0_8px_rgba(0,255,200,0.35)]'
             : 'border-[var(--border)] bg-transparent text-[var(--text)] hover:border-[var(--border-active)]',

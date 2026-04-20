@@ -19,7 +19,7 @@ export function BarIndicator() {
         return (
           <span
             key={index}
-            className={`h-2 w-7 rounded-[2px] transition-all ${stateClass}`}
+            className={`inline-block h-2 w-7 rounded-[2px] transition-all ${stateClass}`}
           />
         );
       })}
