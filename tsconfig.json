@@ -12,11 +12,11 @@
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
+    "skipDefaultLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
-    "baseUrl": ".",
     "paths": {
       "@features/*": [
         "./src/features/*"
@@ -30,6 +30,9 @@
     },
     "allowJs": true,
     "incremental": true,
+    "noImplicitAny": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
     "plugins": [
       {
         "name": "next"

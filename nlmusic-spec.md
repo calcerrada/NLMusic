@@ -12,14 +12,16 @@
 - Adapter pattern para LLMProvider (Claude, OpenAI, Ollama listo)
 
 **MVP — Interfaz web interactiva:** ✅ Complete (estructura)
-- ✅ Frontend scaffold completo (React + Next.js + TypeScript)
+- ✅ Frontend scaffold completo (React 19 + Next.js 16 + TypeScript 6)
 - ✅ Zustand store con estado de tracks, BPM, turns
 - ✅ Sequencer visual: 16 pasos, mute/solo, volumen, click-to-toggle
 - ✅ PromptBox con validación y API integration
 - ✅ API route `/api/generate-pattern` integrada con v0 pipeline
-- ✅ Strudel runtime hook: CDN loader, fallback mode, play/stop/reset
-- ✅ PlaybackControls: botones Play/Stop con estado visual
-- ✅ BeatCursor: indicador de paso activo sincronizado con BPM
+- ✅ Strudel runtime hook: dynamic import (@strudel/web), play/stop
+- ✅ PlayControls: botones Play/Stop con estado visual
+- ✅ useBeatClock + BarIndicator: indicador de paso activo sincronizado con BPM
+- ✅ BpmControl: +/- buttons, rango 60-220 BPM
+- ✅ StrudelCodePanel: código generado con syntax highlighting + osciloscopio
 - ✅ Compilación producción: npm run build ✅
 - ⏳ Testing e2e: prompt → audio (pendiente validación en navegador)
 
@@ -31,19 +33,17 @@ API Route
   ↓ reuse v0 (ClaudeAdapter + runV0Pipeline)
 SessionStore (Zustand)
   ↓ dispatch trackJson + strudelCode
-BeatCursor (visual step)
-PlaybackControls (play/stop)
+useBeatClock + BarIndicator (visual step)
+PlayControls (play/stop)
   ↓ useStrudel.play(strudelCode)
-Strudel.cc (CDN)
+Strudel (@strudel/web — dynamic import)
   ↓ WebAudio API
 🔊 Audio in browser
 ```
 
 **Próximos pasos técnicos:**
 1. Validación en navegador: `npm run dev` y probar flujo completo NL → audio
-2. Ajustes de Strudel API surface si es necesario
-3. BPM slider ajustable
-4. Sincronización de BeatCursor con reloj real de Strudel
+2. Sincronización de useBeatClock con reloj real de Strudel
 
 ---
 
@@ -108,7 +108,7 @@ Lenguaje natural → LLM genera código Strudel + JSON de pistas → Strudel eje
              │                       │
     ┌────────▼────────┐   ┌─────────▼──────────┐
     │  Motor de audio │   │  Backend (proxy)    │
-    │  Strudel.cc     │   │  Next.js / Hono     │
+    │  @strudel/web  │   │  Next.js API Routes │
     │  WebAudio API   │   │  API key · contexto │
     └────────┬────────┘   └─────────┬───────────┘
              │                       │
@@ -134,6 +134,8 @@ El LLM genera un JSON estructurado que alimenta simultáneamente el motor de aud
     {
       "id": "kick",
       "name": "Kick 909",
+      "sample": "bd",
+      "tag": "kick",
       "steps": [1,0,0,0, 1,0,0,0, 1,0,0,0, 1,0,0,0],
       "volume": 0.85,
       "muted": false,
@@ -142,6 +144,8 @@ El LLM genera un JSON estructurado que alimenta simultáneamente el motor de aud
     {
       "id": "snare",
       "name": "Snare",
+      "sample": "sd",
+      "tag": "snare",
       "steps": [0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0],
       "volume": 0.75,
       "muted": false,
@@ -150,17 +154,38 @@ El LLM genera un JSON estructurado que alimenta simultáneamente el motor de aud
     {
       "id": "hihat",
       "name": "Hi-Hat cerrado",
+      "sample": "hh",
+      "tag": "hihat",
       "steps": [1,0,1,0, 1,0,1,0, 1,0,1,0, 1,0,1,0],
       "volume": 0.55,
       "muted": false,
       "solo": false
     }
   ],
-  "strudelCode": "stack(s('bd ~ ~ ~').gain(0.85), s('~ ~ sd ~').gain(0.75), s('hh ~ hh ~').gain(0.55)).setcpm(138/2)"
+  "strudelCode": "stack(s(\"bd ~ ~ ~ bd ~ ~ ~ bd ~ ~ ~ bd ~ ~ ~\").gain(0.85), s(\"~ ~ ~ ~ sd ~ ~ ~ ~ ~ ~ ~ sd ~ ~ ~\").gain(0.75), s(\"hh ~ hh ~ hh ~ hh ~ hh ~ hh ~ hh ~ hh ~\").gain(0.55)).slow(4).cpm(138.00)"
 }
 ```
 
 Cuando el usuario modifica un paso en el grid o mueve un fader, se actualiza el JSON y se regenera el código Strudel automáticamente — **sin necesidad de llamar al LLM**.
+
+### Estructura del proyecto
+
+```
+src/
+├── app/                          # Next.js App Router (routing only)
+├── features/
+│   ├── audio/                    # Motor de audio (hooks + compiler)
+│   ├── sequencer/components/     # Grid de pistas y steps
+│   ├── transport/components/     # Play/Stop, BPM, BarIndicator
+│   ├── prompt/                   # Input NL + hook de generación
+│   └── code-view/components/    # Panel de código Strudel
+├── lib/
+│   ├── llm/                      # Adapters, pipeline, validación
+│   └── types/                    # audio.ts, session.ts, api.ts
+└── store/                        # Zustand (sessionStore)
+```
+
+**Path aliases:** `@features/*`, `@lib/*`, `@store/*`
 
 ---
 
@@ -189,8 +214,8 @@ class CustomAdapter implements LLMProvider { ... }   // Cualquier proveedor comp
 
 | Capa | Tecnología | Razón |
 |---|---|---|
-| Frontend | React + TypeScript + Next.js | App router, API routes en el mismo proyecto |
-| Audio engine | Strudel.cc | TidalCycles en el browser, samples incluidos |
+| Frontend | React 19 + TypeScript 6 + Next.js 16 (Turbopack) | App router, API routes en el mismo proyecto |
+| Audio engine | @strudel/web (npm, dynamic import) | TidalCycles en el browser, samples incluidos |
 | Estado | Zustand + localStorage | Sincronización tracks ↔ UI ↔ Strudel; persistencia local de sesión |
 | Estilos | Tailwind CSS | Prototipado rápido del secuenciador y faders |
 | LLM principal | Claude claude-sonnet-4-6 | Mejor generación de código con contexto musical |
@@ -220,13 +245,13 @@ class CustomAdapter implements LLMProvider { ... }   // Cualquier proveedor comp
 
 ### Should — v1 si el MVP funciona bien
 
-| Feature | Justificación |
-|---|---|
-| BPM ajustable con slider | Importante para el feeling, Strudel tiene un default usable |
-| Indicador visual del paso activo (beat cursor) | Mejora la experiencia en vivo notablemente |
-| Referencias artísticas ("algo entre Aphex Twin y minimal") | Alta complejidad de prompting |
-| Export WAV/MP3 | Útil pero no es el core de la experiencia |
-| Panel con el código Strudel visible y editable | Para usuarios avanzados, puente al algorave clásico |
+| Feature | Estado | Justificación |
+|---|---|---|
+| BPM ajustable con +/- buttons | ✅ Done | BpmControl: rango 60-220 |
+| Indicador visual del paso activo (beat cursor) | ✅ Done | useBeatClock + BarIndicator + step highlighting en Sequencer |
+| Panel con el código Strudel visible | ✅ Done (read-only) | StrudelCodePanel con syntax highlighting + osciloscopio |
+| Referencias artísticas ("algo entre Aphex Twin y minimal") | ⏳ | Alta complejidad de prompting |
+| Export WAV/MP3 | ⏳ | Útil pero no es el core de la experiencia |
 
 ### Could — v2 en adelante
 
@@ -274,10 +299,11 @@ class CustomAdapter implements LLMProvider { ... }   // Cualquier proveedor comp
 - Despliegue en Vercel para acceso desde cualquier navegador
 
 ### v1 — Experiencia completa de live coding natural
-- BPM slider, beat cursor, código Strudel visible
+- Código Strudel editable (actualmente read-only)
 - Contexto de sesión más rico y coherente
 - Primeras melodías y armonías
 - Selección de LLM desde la interfaz
+- Sincronización useBeatClock con el clock interno de Strudel
 
 ---
 
@@ -309,21 +335,28 @@ class CustomAdapter implements LLMProvider { ... }   // Cualquier proveedor comp
 - ✅ API key protegida en servidor (no expuesta al cliente)
 
 **Frontend**
-- ✅ React + Next.js app scaffolding (App Router)
+- ✅ React 19 + Next.js 16 app scaffolding (App Router + Turbopack)
 - ✅ Zustand store con tracks, BPM, turns, UI state
 - ✅ Sequencer grid: 16 pasos, click-to-toggle, mute/solo
 - ✅ PromptBox: input + send + loading state
-- ✅ PlaybackControls: Play/Stop buttons + state display
-- ✅ BeatCursor: visual 16-step indicator with BPM animation
-- ✅ BpmControl: slider 60-220 BPM
+- ✅ PlayControls: Play/Stop buttons + state display
+- ✅ useBeatClock + BarIndicator: paso activo sincronizado con BPM
+- ✅ BpmControl: +/- buttons, rango 60-220 BPM
+- ✅ StrudelCodePanel: código generado con syntax highlighting + osciloscopio
 - ✅ Dark theme + Tailwind CSS + responsive layout
 - ✅ localStorage persistence (Zustand middleware)
 
 **Audio Integration**
-- ✅ Strudel.cc CDN loader in layout.tsx
-- ✅ useStrudel hook: play, stop, reset methods
-- ✅ Fallback mode: app works even if CDN times out
-- ✅ Error handling + fallback patterns
+- ✅ Strudel cargado via dynamic import('@strudel/web') en useStrudel hook
+- ✅ useStrudel hook: play (evaluate), stop (hush) capturados del módulo
+- ✅ Contrato temporal: `.slow(4).cpm(bpm)` — 16 steps = 1 bar en 4/4
+- ✅ BPM change regenera código Strudel automáticamente (compileCode en store)
+
+**Architecture**
+- ✅ Feature-based structure: `src/features/`, `src/lib/`, `src/store/`
+- ✅ Barrel exports por feature (index.ts)
+- ✅ Path aliases: `@features/*`, `@lib/*`, `@store/*`
+- ✅ Tipos split por dominio: `audio.ts`, `session.ts`, `api.ts`
 
 **Documentation**
 - ✅ Updated nlmusic-spec.md with MVP status
@@ -333,18 +366,15 @@ class CustomAdapter implements LLMProvider { ... }   // Cualquier proveedor comp
 
 **Code Quality**
 - ✅ TypeScript strict mode
-- ✅ npm run build: zero errors
+- ✅ npm run build: zero errors (Next.js 16.2.4 Turbopack)
 - ✅ npm run dev: hot reload working
-- ✅ All imports fixed (no .js extensions)
-- ✅ Path aliases working (@/lib/*, @/components/*)
+- ✅ All imports resolved, no legacy aliases
 
 ### Pending (Sprint 2+)
-- ⏳ Browser testing: validate Strudel CDN loading
-- ⏳ Debug Strudel API surface (window.strudel vs window.Strudel)
-- ⏳ BeatCursor real-time sync with Strudel clock (not just BPM animation)
-- ⏳ BPM change: regenerate Strudel code with new CPM
+- ⏳ Browser testing: validar flujo completo prompt → audio en navegador
+- ⏳ useBeatClock: sincronizar con clock real de Strudel (actualmente setInterval)
 - ⏳ Export WAV (v1 feature)
-- ⏳ Code editor panel (show generated Strudel code)
+- ⏳ StrudelCodePanel editable (actualmente read-only)
 
 ## Referencias
 

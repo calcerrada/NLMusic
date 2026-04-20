@@ -4,7 +4,7 @@
 NLMusic es una interfaz de **live coding musical dirigida por lenguaje natural**. El usuario describe intenciones musicales en texto y el sistema genera y ejecuta audio en tiempo real usando Strudel.cc (TidalCycles en el browser vía WebAudio API).
 
 ## Stack tecnológico
-- **Framework:** Next.js 14 (App Router) + React + TypeScript (strict mode)
+- **Framework:** Next.js 16 (App Router, Turbopack) + React 19 + TypeScript (strict mode)
 - **Estilos:** Tailwind CSS — sin CSS modules, sin styled-components
 - **Estado global:** Zustand (con middleware `persist` para localStorage)
 - **Audio engine:** Strudel.cc cargado vía CDN en `layout.tsx`
