@@ -4,85 +4,70 @@
 NLMusic es una interfaz de **live coding musical dirigida por lenguaje natural**. El usuario describe intenciones musicales en texto y el sistema genera y ejecuta audio en tiempo real usando Strudel.cc (TidalCycles en el browser vía WebAudio API).
 
 ## Stack tecnológico
-- **Framework:** Next.js 16 (App Router, Turbopack) + React 19 + TypeScript (strict mode)
+- **Framework:** Next.js 14 (App Router) + React + TypeScript (strict mode)
 - **Estilos:** Tailwind CSS — sin CSS modules, sin styled-components
 - **Estado global:** Zustand (con middleware `persist` para localStorage)
-- **Audio engine:** Strudel.cc cargado vía CDN en `layout.tsx`
+- **Audio engine:** Strudel instalado como paquetes npm (NO como CDN script):
+  - `@strudel/web` — `initStrudel()`, `hush()`
+  - `@strudel/webaudio` — `getAudioContext()` para el osciloscopio
+  - `@strudel/transpiler` — `evaluate(code)` que transpila y añade location metadata
+  - `@strudel/codemirror` — editor CodeMirror con highlight de notas activas en tiempo real
+- **Editor de código:** CodeMirror 6 vía `@strudel/codemirror`:
+  - `strudelTheme` + tema custom `nlmusicTheme` para adaptar colores
+  - `activatePattern()` — extensión que marca los tokens activos mientras suena
+  - `javascript()` de `@codemirror/lang-javascript` para syntax highlighting
 - **LLM:** Claude claude-sonnet-4-6 vía API route `/api/generate-pattern` (patrón adapter, nunca llamada directa desde el cliente)
 - **Fuentes:** JetBrains Mono (principal), DM Sans (secundaria) — importadas desde Google Fonts en `layout.tsx`
 
 ## Convenciones de código
 - **Componentes:** funcionales con hooks, named exports, un componente por archivo
-- **Tipos:** definidos en `src/lib/types/` (split: `audio.ts`, `session.ts`, `api.ts`), importados con `@lib/types`
-- **Path aliases:** `@features/*` → `./src/features/*`, `@lib/*` → `./src/lib/*`, `@store/*` → `./src/store/*`
-- **Barrel exports:** cada feature expone un `index.ts` público. Imports cross-feature usan el barrel (`@features/audio`), imports intra-feature usan rutas relativas
+- **Tipos:** definidos en `src/types/index.ts`, importados con `@/types`
+- **Path aliases:** `@/components/*`, `@/lib/*`, `@/hooks/*`, `@/types/*`, `@/store/*`
 - **Nunca** usar `any`; preferir tipos explícitos o `unknown`
-- **Hooks personalizados** colocados en `hooks/` dentro de su feature (ej: `src/features/audio/hooks/useBeatClock.ts`)
+- **Hooks personalizados** en `src/hooks/` para lógica reutilizable (useStrudel, useSessionStore, useBeatClock)
 - **No** lógica de negocio en componentes UI — delegar a hooks y store
 
 ## Estructura de directorios
 ```
 src/
 ├── app/
-│   ├── layout.tsx              # Fuentes + globals
-│   ├── page.tsx                # Layout principal de la app
-│   ├── globals.css             # Variables CSS del design system
+│   ├── layout.tsx          # Fuentes + Strudel CDN loader
+│   ├── page.tsx            # Layout principal de la app
 │   └── api/
 │       └── generate-pattern/
-│           └── route.ts        # Next.js API route → pipeline
-│
-├── features/
-│   ├── audio/
-│   │   ├── hooks/
-│   │   │   ├── useStrudel.ts   # play(), stop(), isReady
-│   │   │   └── useBeatClock.ts # Cursor sincronizado con BPM
-│   │   ├── compiler.ts         # TrackJSON → código Strudel
-│   │   └── index.ts            # Barrel export
-│   ├── sequencer/
-│   │   ├── components/
-│   │   │   ├── TrackZone.tsx    # Contenedor de pistas + empty state
-│   │   │   ├── TrackCard.tsx    # Pista individual
-│   │   │   ├── Sequencer.tsx    # Grid de 16 pasos
-│   │   │   ├── StepButton.tsx   # Paso individual clickable
-│   │   │   ├── MiniWaveform.tsx # Mini visualización decorativa
-│   │   │   └── VolumeSlider.tsx # Control de volumen por pista
-│   │   └── index.ts
+│           └── route.ts    # Next.js API route → ClaudeAdapter
+├── components/
 │   ├── transport/
-│   │   ├── components/
-│   │   │   ├── TransportBar.tsx  # Play/Stop + BPM + BarIndicator
-│   │   │   ├── PlayControls.tsx  # Botón play/stop con estado
-│   │   │   ├── BpmControl.tsx    # Número con botones +/-
-│   │   │   └── BarIndicator.tsx  # 4 rectángulos, beat activo
-│   │   └── index.ts
-│   ├── prompt/
-│   │   ├── components/
-│   │   │   └── PromptBox.tsx     # Textarea + botón enviar
-│   │   ├── hooks/
-│   │   │   └── usePatternGen.ts  # Llamada a /api/generate-pattern
-│   │   └── index.ts
-│   └── code-view/
-│       ├── components/
-│       │   └── StrudelCodePanel.tsx # Código generado + osciloscopio
-│       └── index.ts
-│
+│   │   ├── TransportBar.tsx      # Play/Stop + BPM + BarIndicator
+│   │   ├── BpmControl.tsx        # Número con botones +/-
+│   │   └── BarIndicator.tsx      # 4 rectángulos, beat activo
+│   ├── tracks/
+│   │   ├── TrackZone.tsx         # Contenedor de pistas + empty state
+│   │   ├── TrackCard.tsx         # Pista individual
+│   │   ├── Sequencer.tsx         # Grid de 16 pasos
+│   │   ├── StepButton.tsx        # Paso individual clickable
+│   │   └── MiniWaveform.tsx      # Mini visualización de onda por pista
+│   ├── code-view/
+│   │   └── StrudelCodePanel.tsx  # Código generado + osciloscopio canvas
+│   └── prompt/
+│       └── PromptBox.tsx         # Textarea + botón enviar
+├── hooks/
+│   ├── useStrudel.ts       # play(), stop(), reset(), evaluateCode()
+│   ├── useBeatClock.ts     # Beat cursor sincronizado con BPM
+│   └── usePatternGen.ts    # Llamada a /api/generate-pattern + gestión de estado
+├── store/
+│   └── sessionStore.ts     # Zustand store: tracks, bpm, turns, ui state
 ├── lib/
-│   ├── llm/
-│   │   ├── adapters/
-│   │   │   └── claude.adapter.ts  # Implementación Anthropic
-│   │   ├── prompts/
-│   │   │   └── systemPrompt.ts    # System prompt musical
-│   │   ├── pipeline.ts            # Pipeline v0 (adapter + validación + fallback)
-│   │   ├── fallbackPattern.ts     # Patrón fallback si LLM falla
-│   │   └── validation.ts          # Schema Zod para TrackJSON
-│   └── types/
-│       ├── audio.ts               # Track, TrackJSON, TrackTag
-│       ├── session.ts             # SessionContext, SessionTurn
-│       ├── api.ts                 # LLMProvider
-│       ├── strudel-web.d.ts       # Tipos para @strudel/web
-│       └── index.ts               # Re-exports públicos
-│
-└── store/
-    └── sessionStore.ts            # Zustand store: tracks, bpm, turns, ui
+│   ├── adapters/
+│   │   ├── LLMProvider.ts        # Interfaz común
+│   │   ├── ClaudeAdapter.ts      # Implementación Anthropic
+│   │   └── OllamaAdapter.ts      # Implementación local (futura)
+│   ├── strudel/
+│   │   ├── compiler.ts           # TrackJSON → código Strudel
+│   │   └── systemPrompt.ts       # System prompt musical para el LLM
+│   └── types.ts                  # Re-export de @/types
+└── types/
+    └── index.ts            # TrackJSON, Track, SessionContext, etc.
 ```
 
 ## Modelo de datos central (TrackJSON)
@@ -143,7 +128,9 @@ interface LLMProvider {
 ```
 
 ## Notas importantes
-- Strudel se carga como script CDN en `layout.tsx`; acceso via `window.strudel` o `window.Strudel` (verificar en runtime)
+- **Strudel se instala como paquetes npm, NO como script CDN.** Eliminar cualquier `<script src="...strudel...">` del `layout.tsx`. Usar `import { initStrudel } from '@strudel/web'` y llamarlo una vez al montar la app.
+- El código del usuario pasa por `evaluate(code)` de `@strudel/transpiler` antes de ejecutarse. Este paso añade metadata de posición (`withMiniLocation`) a cada token, que es lo que permite al plugin `activatePattern()` de `@strudel/codemirror` resaltar los tokens activos en tiempo real.
 - El audio NUNCA se interrumpe al modificar pasos en el sequencer — solo se regenera el código Strudel y se re-evalúa en el siguiente ciclo
 - `useBeatClock` usa `setInterval` basado en BPM; en v2 se sincronizará con el clock interno de Strudel
 - El contexto de sesión (historial de turns) vive en Zustand con `persist` — NO en el servidor
+- `getAudioContext()` de `@strudel/webaudio` da acceso al `AudioContext` interno de Strudel — usar para conectar el `AnalyserNode` del osciloscopio

@@ -1,12 +1,14 @@
 'use client';
 
 import { useStrudel } from '@features/audio';
+import { useSessionStore } from '@store/sessionStore';
 import { PlayControls } from './PlayControls';
 import { BpmControl } from './BpmControl';
 import { BarIndicator } from './BarIndicator';
 
 export function TransportBar() {
   const strudel = useStrudel();
+  const isPlaying = useSessionStore((s) => s.isPlaying);
 
   return (
     <header
@@ -33,12 +35,22 @@ export function TransportBar() {
           gap: 24,
         }}
       >
-        <span
-          className="text-[11px] uppercase tracking-[0.18em] text-[var(--text-muted)]"
+        <div
+          className="flex items-center gap-3"
           style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)' }}
         >
-          NLMusic
-        </span>
+          <span className="text-[11px] uppercase tracking-[0.18em] text-[var(--text-muted)]">
+            NLMusic
+          </span>
+          <span
+            className={[
+              'h-[10px] w-[10px] rounded-full transition-colors',
+              isPlaying
+                ? 'bg-[var(--cyan)] animate-pulse-dot shadow-[0_0_8px_rgba(0,255,200,0.8)]'
+                : 'bg-white/30',
+            ].join(' ')}
+          />
+        </div>
         <PlayControls strudel={strudel} />
         <BpmControl />
         <BarIndicator />

@@ -1,63 +1,33 @@
-# NLMusic — Especificación de producto v0.1
+# NLMusic — Especificación de producto
+
+| Campo | Valor |
+|---|---|
+| Spec-ID | SPEC-NLM-000 |
+| Producto | NLMusic |
+| Alcance | Especificación completa del producto (todas las capacidades) |
+| Versión | 0.1 |
+| Autor | Calcerrada |
+| Fecha | 2026-04-22 |
+| Estado | DRAFT |
+| Revisores | — |
 
 > Lenguaje natural como instrumento musical en tiempo real.
-
----
-
-## Estado de desarrollo (Abril 2026)
-
-**v0 — Validación técnica:** ✅ Complete
-- LLM pipeline (v0) funcional con fallback robusta
-- Test harness: 20 casos de prueba, Go/No-Go verdict
-- Adapter pattern para LLMProvider (Claude, OpenAI, Ollama listo)
-
-**MVP — Interfaz web interactiva:** ✅ Complete (estructura)
-- ✅ Frontend scaffold completo (React 19 + Next.js 16 + TypeScript 6)
-- ✅ Zustand store con estado de tracks, BPM, turns
-- ✅ Sequencer visual: 16 pasos, mute/solo, volumen, click-to-toggle
-- ✅ PromptBox con validación y API integration
-- ✅ API route `/api/generate-pattern` integrada con v0 pipeline
-- ✅ Strudel runtime hook: dynamic import (@strudel/web), play/stop
-- ✅ PlayControls: botones Play/Stop con estado visual
-- ✅ useBeatClock + BarIndicator: indicador de paso activo sincronizado con BPM
-- ✅ BpmControl: +/- buttons, rango 60-220 BPM
-- ✅ StrudelCodePanel: código generado con syntax highlighting + osciloscopio
-- ✅ Compilación producción: npm run build ✅
-- ⏳ Testing e2e: prompt → audio (pendiente validación en navegador)
-
-**Arquitectura completada:**
-```
-PromptBox
-  ↓ fetch /api/generate-pattern
-API Route
-  ↓ reuse v0 (ClaudeAdapter + runV0Pipeline)
-SessionStore (Zustand)
-  ↓ dispatch trackJson + strudelCode
-useBeatClock + BarIndicator (visual step)
-PlayControls (play/stop)
-  ↓ useStrudel.play(strudelCode)
-Strudel (@strudel/web — dynamic import)
-  ↓ WebAudio API
-🔊 Audio in browser
-```
-
-**Próximos pasos técnicos:**
-1. Validación en navegador: `npm run dev` y probar flujo completo NL → audio
-2. Sincronización de useBeatClock con reloj real de Strudel
-
----
-
-## Resumen ejecutivo
-
-NLMusic es una interfaz de live coding musical dirigida por lenguaje natural. El usuario describe intenciones musicales en texto ("un bombo 909 en 4x4 techno, oscuro y acelerado") y el sistema genera y ejecuta audio en tiempo real, de forma iterativa y conversacional. La experiencia es la de un instrumento para tocar en vivo, no la de un generador de archivos de audio.
-
-El proyecto parte del concepto del **algorave** (generación musical a partir de código, como TidalCycles o SuperCollider) y lo lleva al lenguaje humano, eliminando la barrera de la programación sin sacrificar el control ni la expresividad.
 
 ---
 
 ## Problem statement
 
 > Los músicos y artistas que quieren explorar música generativa en tiempo real necesitan aprender un lenguaje de programación específico (TidalCycles, SuperCollider) para poder hacerlo. Esta barrera técnica excluye a quienes tienen la intención musical pero no el perfil de programador, y ralentiza incluso a quienes sí lo tienen. El resultado es que la exploración creativa queda subordinada a la sintaxis.
+
+---
+
+## Sección 2 — Descripción Funcional
+
+NLMusic es un instrumento de live coding musical controlado por lenguaje natural. El usuario describe intenciones musicales en texto — abstractas ("oscuro, hipnótico") o concretas ("bombo en negras, hi-hat cada dos compases") — y el sistema genera y ejecuta audio en tiempo real en el navegador, sin instalaciones ni conocimiento de programación.
+
+Una vez generado el patrón, el usuario puede refinarlo de tres formas: enviando nuevos prompts que modifiquen o eliminen pistas concretas, editando los pasos directamente en el secuenciador visual, o modificando el código Strudel generado en la pestaña de código. Todos los cambios se aplican en el siguiente ciclo sin interrumpir el audio.
+
+La experiencia es la de un instrumento para tocar en vivo, no la de un generador de archivos.
 
 ---
 
@@ -78,6 +48,343 @@ NLMusic convierte la intención musical expresada en lenguaje natural — abstra
 
 ---
 
+## Capacidades del producto
+
+| ID | Capacidad | MVP |
+|---|---|---|
+| CAP-NLM-001 | Generar patrón desde prompt de lenguaje natural | ✅ |
+| CAP-NLM-002 | Modificar o eliminar pistas desde prompt | ✅ |
+| CAP-NLM-003 | Eliminar pista desde UI (botón ✕) | ✅ |
+| CAP-NLM-004 | Controlar reproducción (play / stop) | ✅ |
+| CAP-NLM-005 | Modificar BPM | ✅ |
+| CAP-NLM-006 | Editar pasos del secuenciador manualmente | ✅ |
+| CAP-NLM-007 | Mute y Solo por pista | ✅ |
+| CAP-NLM-008 | Ver y editar código Strudel directamente | ✅ |
+| CAP-NLM-009 | Persistencia automática de sesión | ✅ |
+| CAP-NLM-010 | Guía de prompts (pestaña Configuración/Guía) | ✅ |
+| CAP-NLM-011 | Gestión de API key por el usuario | ⏳ v1 |
+| CAP-NLM-012 | Waveform en pestaña Strudel | ⏳ v1 |
+
+---
+
+## Sección 3 — Actores y Precondiciones
+
+### Actor principal
+Usuario autenticado implícitamente — en el MVP, el propio autor del proyecto. En v1+, cualquier usuario con acceso a la URL.
+
+### Actores secundarios
+- Motor de audio Strudel (WebAudio API en el navegador)
+- LLM Provider (Claude vía API de Anthropic en el MVP)
+- Sistema de persistencia (localStorage del navegador)
+
+### Precondiciones
+- El usuario dispone de un navegador con soporte de WebAudio API
+  (pendiente de validar compatibilidad exacta)
+- La aplicación está desplegada y accesible vía URL
+- La API key del LLM está configurada en el servidor (.env.local)
+  — en v1+ será introducida por el usuario en la configuración
+- El dispositivo tiene conexión a internet activa
+  — en v1+ será opcional si se usa Ollama en local
+- El motor Strudel ha completado su inicialización
+  (initStrudel() ha resuelto correctamente)
+
+### Notas de evolución
+- Control de acceso: inexistente en MVP (solo uso personal);
+  a definir en v1+ cuando la app sea pública
+- Gestión de API key por el usuario: CAP-NLM-011, planificada para v1+
+- Modo offline con Ollama: compatible con la arquitectura actual,
+  planificado para v1+
+
+---
+
+## Sección 4 — Flujo Principal (Golden Path)
+
+### CAP-NLM-001 · Generar patrón desde prompt
+
+1. El usuario escribe una intención musical en lenguaje natural
+   en la caja de prompt y pulsa Enter.
+2. El sistema muestra un indicador de carga:
+   - Primera interacción (sin pistas): ocupa el área principal
+     donde aparecerán las pistas.
+   - Interacciones posteriores (con pistas): indicador no
+     intrusivo que no interfiere con las pistas existentes
+     ni interrumpe el audio en curso.
+3. El sistema envía el prompt junto con el contexto de sesión
+   actual (pistas existentes, BPM, historial) al LLM.
+4. El LLM devuelve una respuesta válida con el schema definido:
+   JSON con tracks[] y strudelCode.
+5. El sistema añade la nueva pista al estado de sesión (Zustand)
+   de forma secuencial — independientemente de si el usuario
+   referenció un número de pista concreto.
+6. El sistema oculta el indicador de carga.
+7. El sistema renderiza una nueva lane en el secuenciador con:
+   el nombre de la pista, los pasos activos, y los controles
+   de mute, solo y eliminar (✕).
+8. El sistema evalúa el código Strudel generado en el motor
+   de audio.
+9. El audio comienza a sonar en el siguiente ciclo de Strudel.
+10. El cursor del secuenciador se activa mostrando el paso
+    que se está ejecutando en cada momento.
+
+---
+
+## Sección 5 — Reglas de Negocio
+
+| ID | Regla | Tipo | Consecuencia si se viola |
+|---|---|---|---|
+| BR-001 | El audio nunca se interrumpe durante una llamada al LLM | RESTRICTION | El patrón actual sigue sonando hasta que el nuevo esté listo |
+| BR-002 | El LLM debe devolver una respuesta que cumpla el schema definido (JSON válido con tracks[] y strudelCode) | VALIDATION | Se descarta la respuesta, se mantiene el estado anterior, se informa al usuario y se ofrece la opción de reintentar |
+| BR-003 | Cualquier error en la llamada al LLM (red, timeout, schema inválido) se trata de forma uniforme | RESTRICTION | Se mantiene el estado anterior, se informa al usuario y se ofrece la opción de reintentar |
+| BR-004 | Las pistas se crean siempre de forma secuencial, independientemente de si el usuario referencia un número de pista concreto | AUTOMATIC | Si el usuario dice "en la pista 5 añade un bombo" y no hay pistas, se crea la pista 1 |
+| BR-005 | Las referencias a pistas en el prompt solo tienen efecto si esa pista ya existe | VALIDATION | Si la pista referenciada no existe, se trata como error: se informa al usuario y no se realiza ningún cambio |
+| BR-006 | El número máximo de pistas es 5 | RESTRICTION | Si el usuario intenta añadir una sexta pista, se informa del límite y no se crea la pista |
+| BR-007 | Eliminar una pista es una acción destructiva e irreversible | RESTRICTION | No requiere confirmación. No existe deshacer en el MVP |
+| BR-008 | Editar el grid manualmente no invoca al LLM | AUTOMATIC | Los cambios se aplican localmente, se regenera el strudelCode desde el JSON, y el audio se actualiza en el siguiente ciclo |
+| BR-009 | El editor de código Strudel y el grid del secuenciador están sincronizados bidireccionalmente | RESTRICTION | Cualquier cambio en uno se refleja inmediatamente en el otro |
+| BR-010 | Un prompt vacío no genera llamada al LLM | VALIDATION | Se ignora con feedback visual al usuario |
+| BR-011 | La API key nunca se expone al cliente | AUTHORIZATION | Toda llamada al LLM va proxied por Next.js API route. La key solo vive en .env.local |
+
+---
+
+## Sección 6 — Máquina de Estados
+
+### Estados
+
+| Estado | Descripción |
+|---|---|
+| IDLE | App cargada, sin pistas, sin audio |
+| LOADING | LLM procesando una petición. Input de prompt bloqueado |
+| PLAYING | Pistas activas, audio sonando, cursor activo |
+| PAUSED | Pistas activas, audio detenido |
+| ERROR | Llamada al LLM fallida. Pistas y prompt intactos |
+
+### Transiciones
+
+| De | A | Trigger | Guard | Side effect |
+|---|---|---|---|---|
+| IDLE | LOADING | user.submit_prompt | Prompt no vacío | Mostrar indicador de carga en área principal; bloquear input |
+| LOADING | PLAYING | llm.response_ok | JSON válido, pistas ≤ 5 | Limpiar prompt; ocultar indicador; renderizar pista; arrancar audio |
+| LOADING | ERROR | llm.response_error | Cualquier error (red, schema, timeout) | Ocultar indicador; desbloquear input; mantener prompt; mostrar error con opción de reintentar |
+| PLAYING | LOADING | user.submit_prompt | Prompt no vacío | Mostrar indicador no intrusivo; bloquear input; audio continúa |
+| PLAYING | PAUSED | user.stop | — | Detener audio; cursor se detiene; pistas permanecen |
+| PLAYING | IDLE | user.delete_track | Era la última pista | Detener audio; limpiar estado; resetear secuenciador |
+| PAUSED | PLAYING | user.play | Al menos una pista existe | Audio arranca desde el principio del ciclo |
+| PAUSED | LOADING | user.submit_prompt | Prompt no vacío | Mostrar indicador no intrusivo; bloquear input |
+| PAUSED | IDLE | user.delete_track | Era la última pista | Limpiar estado; resetear secuenciador |
+| ERROR | LOADING | user.retry | Prompt no vacío | Mostrar indicador de carga; bloquear input; reutilizar prompt anterior |
+
+### Notas
+- El prompt nunca se borra en caso de error — el usuario puede
+  reenviarlo o modificarlo.
+- El prompt se limpia únicamente cuando LOADING termina con éxito.
+
+---
+
+## Sección 7 — Edge Cases
+
+| ID | Escenario | Comportamiento esperado |
+|---|---|---|
+| EC-001 | El LLM devuelve JSON malformado o que no cumple el schema | Mantener estado anterior; informar al usuario; ofrecer reintento; prompt intacto |
+| EC-002 | Error de red durante la llamada al LLM | Mismo comportamiento que EC-001 |
+| EC-003 | El usuario referencia en el prompt una pista que no existe | Informar al usuario; no realizar ningún cambio; no invocar al LLM |
+| EC-004 | El usuario intenta añadir una pista cuando ya hay 5 | Informar del límite; no crear ninguna pista |
+| EC-005 | El LLM devuelve un prompt que requiere crear más pistas de las disponibles (ej: quedan 1 libre, el LLM quiere crear 3) | Informar al usuario del conflicto y dejarle decidir cómo proceder |
+| EC-006 | El usuario escribe código Strudel inválido en la pestaña de código | Capturar el error de Strudel e informar al usuario; si Strudel no lanza error, no hacer nada |
+| EC-007 | El usuario elimina la última pista mientras el sistema está en PLAYING | Detener audio; volver a IDLE; resetear secuenciador |
+| EC-008 | El usuario elimina la última pista mientras el sistema está en PAUSED | Volver a IDLE; resetear secuenciador |
+| EC-009 | El usuario envía un prompt mientras LOADING está activo | El input está bloqueado; no se genera ninguna llamada al LLM |
+| EC-010 | initStrudel() falla durante la carga de la app | La app no es funcional; mostrar mensaje de error claro indicando que el motor de audio no ha podido inicializarse |
+
+---
+
+## Sección 8 — BDD (Criterios de Aceptación)
+
+### CAP-NLM-001 · Generar patrón desde prompt
+
+**Scenario: Primera generación exitosa**
+```
+Given la app está cargada y no hay pistas
+When el usuario escribe "un bombo 808 para drum and bass" y pulsa Enter
+Then el indicador de carga aparece en el área principal
+And en menos de 5 segundos aparece una nueva pista en el secuenciador
+And el audio comienza a sonar
+And el cursor del secuenciador muestra el paso activo
+And el campo de prompt queda vacío
+```
+
+**Scenario: Generación con pistas existentes**
+```
+Given hay 2 pistas sonando
+When el usuario escribe "añade un hi-hat" y pulsa Enter
+Then el indicador de carga aparece sin tapar las pistas existentes
+And el audio de las pistas existentes no se interrumpe
+And aparece una tercera pista en el secuenciador
+And el campo de prompt queda vacío
+```
+
+**Scenario: Prompt vacío**
+```
+Given la app está en cualquier estado
+When el usuario pulsa Enter con el campo de prompt vacío
+Then no se realiza ninguna llamada al LLM
+And se muestra feedback visual indicando que el prompt está vacío
+```
+
+**Scenario: Error en la llamada al LLM**
+```
+Given hay 2 pistas sonando
+When el LLM devuelve un error o una respuesta inválida
+Then el audio no se interrumpe
+And las pistas existentes no cambian
+And se muestra un mensaje de error al usuario
+And se ofrece la opción de reintentar
+And el contenido del prompt permanece intacto
+```
+
+**Scenario: Intento de crear una sexta pista**
+```
+Given hay 5 pistas activas
+When el usuario escribe "añade una conga" y pulsa Enter
+Then no se crea ninguna pista nueva
+And se informa al usuario de que se ha alcanzado el límite de pistas
+```
+
+---
+
+### CAP-NLM-004 · Controlar reproducción
+
+**Scenario: Stop con pistas activas**
+```
+Given hay pistas sonando
+When el usuario pulsa Stop
+Then el audio se detiene
+And el cursor del secuenciador se detiene
+And las pistas permanecen visibles
+```
+
+**Scenario: Play tras Stop**
+```
+Given hay pistas visibles y el audio está detenido
+When el usuario pulsa Play
+Then el audio arranca desde el principio del ciclo
+And el cursor del secuenciador se activa
+```
+
+---
+
+### CAP-NLM-006 · Editar pasos del secuenciador manualmente
+
+**Scenario: Edición manual de un paso**
+```
+Given hay una pista sonando
+When el usuario activa o desactiva un paso en el grid
+Then no se realiza ninguna llamada al LLM
+And el cambio se refleja en el audio en el siguiente ciclo
+And el código Strudel en la pestaña de código se actualiza
+```
+
+---
+
+### CAP-NLM-008 · Editar código Strudel directamente
+
+**Scenario: Edición válida de código Strudel**
+```
+Given hay pistas sonando y el usuario está en la pestaña Strudel
+When el usuario modifica el código Strudel y el código es válido
+Then el audio se actualiza en el siguiente ciclo
+And el grid del secuenciador refleja los cambios
+```
+
+**Scenario: Edición inválida de código Strudel**
+```
+Given el usuario está editando código en la pestaña Strudel
+When el usuario escribe código que Strudel no puede ejecutar
+Then se captura el error y se informa al usuario
+And el estado anterior del audio se mantiene
+```
+
+---
+
+### CAP-NLM-003 · Eliminar pista
+
+**Scenario: Eliminar una pista con pistas restantes**
+```
+Given hay 3 pistas sonando
+When el usuario pulsa ✕ en la pista 2
+Then la pista desaparece del secuenciador
+And el audio de las pistas restantes continúa sin interrupción
+And la acción no se puede deshacer
+```
+
+**Scenario: Eliminar la última pista**
+```
+Given hay 1 pista activa en cualquier estado
+When el usuario pulsa ✕ en esa pista
+Then el audio se detiene
+And el secuenciador queda vacío
+And el sistema vuelve a IDLE
+```
+
+---
+
+## Sección 9 — Necesidades de Integración
+
+| Necesidad | Propósito | Dirección | Criticidad |
+|---|---|---|---|
+| Generación de patrón musical | Transformar un prompt en lenguaje natural en un JSON válido con tracks[] y strudelCode | OUT (petición) / IN (respuesta) | ALTA |
+| Motor de audio en tiempo real | Ejecutar patrones Strudel en el navegador sin instalaciones externas | IN (ejecución local vía WebAudio API) | ALTA |
+| Persistencia de sesión | Guardar y recuperar el estado completo de la sesión entre visitas | IN/OUT (lectura y escritura local) | MEDIA |
+
+### Proveedores actuales (MVP)
+
+| Necesidad | Proveedor | Notas |
+|---|---|---|
+| Generación de patrón musical | Claude (Anthropic API) | API key en .env.local; proxied por Next.js API route |
+| Motor de audio en tiempo real | Strudel.cc (@strudel/web, @strudel/webaudio, @strudel/transpiler) | Paquetes npm; no CDN |
+| Persistencia de sesión | localStorage del navegador vía Zustand persist | Solo en cliente |
+
+### Evolución prevista
+
+| Integración | Versión | Notas |
+|---|---|---|
+| LLMs alternativos (OpenAI, etc.) | v1+ | La arquitectura Adapter ya lo soporta |
+| LLM en local (Ollama) | v1+ | Permitiría uso offline; compatible con arquitectura actual |
+| Autenticación de usuarios | v1+ | Necesaria cuando la app sea pública |
+
+---
+
+## Sección 10 — Adaptaciones Geográficas
+
+### Idiomas de la UI
+
+| Aspecto | ES | EN |
+|---|---|---|
+| Idioma de la interfaz | Español | Inglés |
+| Idioma del prompt del usuario | Libre — cualquier idioma aceptado | Libre — cualquier idioma aceptado |
+| Idioma del system prompt interno (LLM) | Inglés (fijo) | Inglés (fijo) |
+
+### Decisiones tomadas
+
+| Decisión | Valor | Razón |
+|---|---|---|
+| System prompt interno | Inglés | Máximo rendimiento en todos los modelos LLM |
+| Prompt del usuario | Sin restricción de idioma | El LLM es capaz de procesar cualquier idioma |
+| Idiomas de UI en MVP | Español e Inglés | Perfil del autor y audiencia inicial |
+
+### Evolución prevista
+
+| Aspecto | Versión | Notas |
+|---|---|---|
+| Idiomas adicionales de UI | v1+ | A definir según audiencia |
+
+### Notas
+- No existen variaciones regulatorias, legales ni de comportamiento
+  por geografía en el MVP.
+- La experiencia musical es universalmente consistente
+  independientemente del idioma del usuario.
+
+---
+
 ## La pieza clave: Strudel.cc
 
 **Strudel** (strudel.cc) es TidalCycles ejecutándose en el navegador vía WebAudio API. Es el motor que hace viable este proyecto sin depender de DAWs, instalaciones locales ni hardware externo.
@@ -87,7 +394,13 @@ Capacidades relevantes:
 - Evaluación en tiempo real — el patrón cambia en el siguiente ciclo sin interrumpir el loop
 - Sintaxis compacta y aprendible por un LLM: `s("bd ~ sd ~").fast(2)`
 - Soporte nativo de efectos, filtros, envolventes ADSR, armonía — disponible para versiones futuras
-- Es código JavaScript ejecutable directamente en el browser
+- Paquete oficial `@strudel/codemirror` que añade editor editable + resaltado activo de notas en tiempo real
+
+**Strudel se instala como paquetes npm, no como script CDN.** Esto es necesario para poder usar `@strudel/codemirror`, que requiere bundler (Vite / Next.js).
+
+```bash
+npm i @strudel/web @strudel/webaudio @strudel/transpiler @strudel/codemirror
+```
 
 **Flujo principal:**
 ```
@@ -108,7 +421,7 @@ Lenguaje natural → LLM genera código Strudel + JSON de pistas → Strudel eje
              │                       │
     ┌────────▼────────┐   ┌─────────▼──────────┐
     │  Motor de audio │   │  Backend (proxy)    │
-    │  @strudel/web  │   │  Next.js API Routes │
+    │  Strudel.cc     │   │  Next.js / Hono     │
     │  WebAudio API   │   │  API key · contexto │
     └────────┬────────┘   └─────────┬───────────┘
              │                       │
@@ -134,8 +447,6 @@ El LLM genera un JSON estructurado que alimenta simultáneamente el motor de aud
     {
       "id": "kick",
       "name": "Kick 909",
-      "sample": "bd",
-      "tag": "kick",
       "steps": [1,0,0,0, 1,0,0,0, 1,0,0,0, 1,0,0,0],
       "volume": 0.85,
       "muted": false,
@@ -144,8 +455,6 @@ El LLM genera un JSON estructurado que alimenta simultáneamente el motor de aud
     {
       "id": "snare",
       "name": "Snare",
-      "sample": "sd",
-      "tag": "snare",
       "steps": [0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0],
       "volume": 0.75,
       "muted": false,
@@ -154,38 +463,17 @@ El LLM genera un JSON estructurado que alimenta simultáneamente el motor de aud
     {
       "id": "hihat",
       "name": "Hi-Hat cerrado",
-      "sample": "hh",
-      "tag": "hihat",
       "steps": [1,0,1,0, 1,0,1,0, 1,0,1,0, 1,0,1,0],
       "volume": 0.55,
       "muted": false,
       "solo": false
     }
   ],
-  "strudelCode": "stack(s(\"bd ~ ~ ~ bd ~ ~ ~ bd ~ ~ ~ bd ~ ~ ~\").gain(0.85), s(\"~ ~ ~ ~ sd ~ ~ ~ ~ ~ ~ ~ sd ~ ~ ~\").gain(0.75), s(\"hh ~ hh ~ hh ~ hh ~ hh ~ hh ~ hh ~ hh ~\").gain(0.55)).slow(4).cpm(138.00)"
+  "strudelCode": "stack(s('bd ~ ~ ~').gain(0.85), s('~ ~ sd ~').gain(0.75), s('hh ~ hh ~').gain(0.55)).setcpm(138/2)"
 }
 ```
 
 Cuando el usuario modifica un paso en el grid o mueve un fader, se actualiza el JSON y se regenera el código Strudel automáticamente — **sin necesidad de llamar al LLM**.
-
-### Estructura del proyecto
-
-```
-src/
-├── app/                          # Next.js App Router (routing only)
-├── features/
-│   ├── audio/                    # Motor de audio (hooks + compiler)
-│   ├── sequencer/components/     # Grid de pistas y steps
-│   ├── transport/components/     # Play/Stop, BPM, BarIndicator
-│   ├── prompt/                   # Input NL + hook de generación
-│   └── code-view/components/    # Panel de código Strudel
-├── lib/
-│   ├── llm/                      # Adapters, pipeline, validación
-│   └── types/                    # audio.ts, session.ts, api.ts
-└── store/                        # Zustand (sessionStore)
-```
-
-**Path aliases:** `@features/*`, `@lib/*`, `@store/*`
 
 ---
 
@@ -214,9 +502,10 @@ class CustomAdapter implements LLMProvider { ... }   // Cualquier proveedor comp
 
 | Capa | Tecnología | Razón |
 |---|---|---|
-| Frontend | React 19 + TypeScript 6 + Next.js 16 (Turbopack) | App router, API routes en el mismo proyecto |
-| Audio engine | @strudel/web (npm, dynamic import) | TidalCycles en el browser, samples incluidos |
-| Estado | Zustand + localStorage | Sincronización tracks ↔ UI ↔ Strudel; persistencia local de sesión |
+| Frontend | React + TypeScript + Next.js 14 (App Router) | API routes integradas, sin servidor separado |
+| Audio engine | `@strudel/web` + `@strudel/webaudio` + `@strudel/transpiler` | TidalCycles en el browser como paquetes npm |
+| Editor de código | `@strudel/codemirror` + CodeMirror 6 | Editor editable + resaltado de notas activas en tiempo real |
+| Estado | Zustand + middleware persist | Sincronización tracks ↔ UI ↔ Strudel; sesión en localStorage |
 | Estilos | Tailwind CSS | Prototipado rápido del secuenciador y faders |
 | LLM principal | Claude claude-sonnet-4-6 | Mejor generación de código con contexto musical |
 | Backend | Next.js API routes | Proteger API key; contexto de sesión gestionado en cliente |
@@ -245,13 +534,14 @@ class CustomAdapter implements LLMProvider { ... }   // Cualquier proveedor comp
 
 ### Should — v1 si el MVP funciona bien
 
-| Feature | Estado | Justificación |
-|---|---|---|
-| BPM ajustable con +/- buttons | ✅ Done | BpmControl: rango 60-220 |
-| Indicador visual del paso activo (beat cursor) | ✅ Done | useBeatClock + BarIndicator + step highlighting en Sequencer |
-| Panel con el código Strudel visible | ✅ Done (read-only) | StrudelCodePanel con syntax highlighting + osciloscopio |
-| Referencias artísticas ("algo entre Aphex Twin y minimal") | ⏳ | Alta complejidad de prompting |
-| Export WAV/MP3 | ⏳ | Útil pero no es el core de la experiencia |
+| Feature | Justificación |
+|---|---|
+| BPM ajustable con slider | Importante para el feeling, Strudel tiene un default usable |
+| Indicador visual del paso activo (beat cursor) | Mejora la experiencia en vivo notablemente |
+| Panel Strudel Code editable con resaltado activo | `@strudel/codemirror` lo da de serie — coste bajo, valor muy alto para usuarios avanzados |
+| Osciloscopio de audio real (frecuencias) | `getAudioContext()` de `@strudel/webaudio` da acceso directo — sin librerías extra |
+| Referencias artísticas ("algo entre Aphex Twin y minimal") | Alta complejidad de prompting |
+| Export WAV/MP3 | Útil pero no es el core de la experiencia |
 
 ### Could — v2 en adelante
 
@@ -299,11 +589,12 @@ class CustomAdapter implements LLMProvider { ... }   // Cualquier proveedor comp
 - Despliegue en Vercel para acceso desde cualquier navegador
 
 ### v1 — Experiencia completa de live coding natural
-- Código Strudel editable (actualmente read-only)
+- BPM slider ajustable en la barra de transporte
+- Beat cursor sincronizado con el clock de Strudel
+- Panel "Strudel Code" con CodeMirror editable y resaltado activo de notas (`@strudel/codemirror`)
+- Osciloscopio de audio real por frecuencias vía `AnalyserNode` de WebAudio
 - Contexto de sesión más rico y coherente
-- Primeras melodías y armonías
-- Selección de LLM desde la interfaz
-- Sincronización useBeatClock con el clock interno de Strudel
+- Selección de LLM desde la interfaz (la arquitectura adapter ya lo soporta)
 
 ---
 
@@ -311,78 +602,32 @@ class CustomAdapter implements LLMProvider { ... }   // Cualquier proveedor comp
 
 | Riesgo | Impacto | Mitigación |
 |---|---|---|
-| Sincronismo visual-audio (grid vs clock de Strudel) | Alto | Integración cuidadosa con el scheduler interno de Strudel desde el principio |
+| Sincronismo visual-audio (grid vs clock de Strudel) | Bajo → resuelto | `activatePattern()` de `@strudel/codemirror` gestiona el highlighting sincronizado con el scheduler interno automáticamente |
 | Consistencia del output del LLM (Strudel válido cada vez) | Alto | System prompt muy trabajado con ejemplos y schema estricto de salida JSON |
 | Latencia de la llamada al LLM interrumpe la experiencia | Medio | El audio nunca se para; el LLM actualiza el siguiente ciclo |
 | Calidad musical varía entre modelos LLM | Medio | El adapter permite testear y elegir; Claude es el benchmark inicial |
+| `getAudioContext()` no accesible en la versión de Strudel instalada | Medio | Fallback: senoide simulada con Math.sin hasta resolver; buscar en `@strudel/core` o en el objeto devuelto por `initStrudel()` |
 | WebAudio en Safari tiene comportamiento diferente | Bajo | Strudel lo abstrae en gran medida; testear desde el principio |
 
 ### Decisiones tomadas ✅
-- **Backend:** Next.js API routes (monolito en Vercel, sin servidor separado).
-- **Contexto de sesión:** Solo en cliente — Zustand + localStorage para MVP.
-- **API key:** Protegida en servidor desde el principio (Next.js API route), incluso en v0 local se usa `.env` sin exposición al cliente.
+- **Backend:** Next.js API routes — monolito en Vercel, sin servidor separado
+- **Contexto de sesión:** solo en cliente — Zustand + localStorage
+- **Strudel:** paquetes npm (`@strudel/web`, `@strudel/codemirror`, etc.) — no CDN script
+- **API key en v0:** protegida en servidor desde el principio vía Next.js API route, `.env.local`
+- **System prompt interno:** en inglés — máximo rendimiento en todos los modelos LLM
+- **Modo offline:** no en MVP; compatible con la arquitectura actual vía OllamaAdapter en v1+
 
 ---
-
-## MVP Implementation Checklist (Abril 2026)
-
-### Completed (Sprint 1)
-
-**Backend & API**
-- ✅ Next.js API route `/api/generate-pattern` integrado con v0 pipeline
-- ✅ ClaudeAdapter reutilizado con context passing
-- ✅ Fallback robusta si LLM falla
-- ✅ API key protegida en servidor (no expuesta al cliente)
-
-**Frontend**
-- ✅ React 19 + Next.js 16 app scaffolding (App Router + Turbopack)
-- ✅ Zustand store con tracks, BPM, turns, UI state
-- ✅ Sequencer grid: 16 pasos, click-to-toggle, mute/solo
-- ✅ PromptBox: input + send + loading state
-- ✅ PlayControls: Play/Stop buttons + state display
-- ✅ useBeatClock + BarIndicator: paso activo sincronizado con BPM
-- ✅ BpmControl: +/- buttons, rango 60-220 BPM
-- ✅ StrudelCodePanel: código generado con syntax highlighting + osciloscopio
-- ✅ Dark theme + Tailwind CSS + responsive layout
-- ✅ localStorage persistence (Zustand middleware)
-
-**Audio Integration**
-- ✅ Strudel cargado via dynamic import('@strudel/web') en useStrudel hook
-- ✅ useStrudel hook: play (evaluate), stop (hush) capturados del módulo
-- ✅ Contrato temporal: `.slow(4).cpm(bpm)` — 16 steps = 1 bar en 4/4
-- ✅ BPM change regenera código Strudel automáticamente (compileCode en store)
-
-**Architecture**
-- ✅ Feature-based structure: `src/features/`, `src/lib/`, `src/store/`
-- ✅ Barrel exports por feature (index.ts)
-- ✅ Path aliases: `@features/*`, `@lib/*`, `@store/*`
-- ✅ Tipos split por dominio: `audio.ts`, `session.ts`, `api.ts`
-
-**Documentation**
-- ✅ Updated nlmusic-spec.md with MVP status
-- ✅ Created TESTING.md with e2e checklist
-- ✅ Updated README.md with quick-start guide
-- ✅ Created PROMPT_GUIDE.md for effective prompting
-
-**Code Quality**
-- ✅ TypeScript strict mode
-- ✅ npm run build: zero errors (Next.js 16.2.4 Turbopack)
-- ✅ npm run dev: hot reload working
-- ✅ All imports resolved, no legacy aliases
-
-### Pending (Sprint 2+)
-- ⏳ Browser testing: validar flujo completo prompt → audio en navegador
-- ⏳ useBeatClock: sincronizar con clock real de Strudel (actualmente setInterval)
-- ⏳ Export WAV (v1 feature)
-- ⏳ StrudelCodePanel editable (actualmente read-only)
 
 ## Referencias
 
 - [Strudel.cc](https://strudel.cc) — TidalCycles en el browser
+- [Strudel npm packages](https://www.npmjs.com/org/strudel) — `@strudel/web`, `@strudel/codemirror`, etc.
+- [Strudel — technical manual REPL](https://strudel.cc/technical-manual/repl/) — documentación del mecanismo de highlighting
 - [TidalCycles](https://tidalcycles.org) — live coding musical original
 - [Algorave](https://algorave.com) — comunidad y concepto de partida
 - [Anthropic API](https://docs.anthropic.com) — LLM principal del MVP
 
 ---
 
-*Documento generado como especificación inicial. Versión viva — actualizar conforme avance el proyecto.*
+*Documento vivo — actualizar conforme avance el proyecto.*

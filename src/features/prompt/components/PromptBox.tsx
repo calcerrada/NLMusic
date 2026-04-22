@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
+import { SendHorizontal } from 'lucide-react';
 import { usePatternGen } from '../hooks/usePatternGen';
 
 export function PromptBox() {
@@ -67,21 +68,7 @@ export function PromptBox() {
             className="h-[34px] w-[34px] rounded-[7px] border border-[var(--border-active)] bg-[rgba(0,255,200,0.12)] text-[var(--cyan)] transition-all hover:bg-[rgba(0,255,200,0.2)] hover:shadow-[0_0_10px_rgba(0,255,200,0.32)] disabled:opacity-45"
             aria-label="Enviar prompt"
           >
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              className="mx-auto h-4 w-4"
-              aria-hidden="true"
-            >
-              <path
-                d="M5 12H19M19 12L13.5 6.5M19 12L13.5 17.5"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
+            <SendHorizontal size={16} strokeWidth={1.5} className="text-current" />
           </button>
         </div>
 
