@@ -1,16 +1,16 @@
-'use client';
+"use client";
 
-import { create } from 'zustand';
-import { devtools, persist } from 'zustand/middleware';
-import type { Track, TrackJSON } from '@lib/types';
-import { compileToStrudel } from '@features/audio';
+import { create } from "zustand";
+import { devtools, persist } from "zustand/middleware";
+import type { Track, TrackJSON } from "@lib/types";
+import { compileToStrudel } from "@features/audio/compiler";
 
-type ActiveTab = 'sequencer' | 'code';
+type ActiveTab = "sequencer" | "code";
 
 interface PersistedState {
   bpm: number;
   tracks: Track[];
-  turns: { role: 'user' | 'assistant'; content: string }[];
+  turns: { role: "user" | "assistant"; content: string }[];
 }
 
 export interface SessionStore {
@@ -19,7 +19,7 @@ export interface SessionStore {
   isPlaying: boolean;
   activeTab: ActiveTab;
   currentCode: string;
-  turns: { role: 'user' | 'assistant'; content: string }[];
+  turns: { role: "user" | "assistant"; content: string }[];
 
   setTracks: (tracks: Track[]) => void;
   setBpm: (bpm: number) => void;
@@ -30,7 +30,7 @@ export interface SessionStore {
   setVolume: (trackId: string, volume: number) => void;
   toggleMute: (trackId: string) => void;
   toggleSolo: (trackId: string) => void;
-  addTurn: (role: 'user' | 'assistant', content: string) => void;
+  addTurn: (role: "user" | "assistant", content: string) => void;
   loadPattern: (pattern: TrackJSON) => void;
 }
 
@@ -39,9 +39,9 @@ function compileCode(bpm: number, tracks: Track[]): string {
 }
 
 const defaultKickTrack: Track = {
-  id: 'kick-1',
-  name: 'Kick',
-  tag: 'kick',
+  id: "kick-1",
+  name: "Kick",
+  tag: "kick",
   steps: [0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0] as (0 | 1)[],
   volume: 0.8,
   muted: false,
@@ -58,7 +58,7 @@ export const useSessionStore = create<SessionStore>()(
         tracks: initialTracks,
         bpm: initialBpm,
         isPlaying: false,
-        activeTab: 'sequencer',
+        activeTab: "sequencer",
         currentCode: compileCode(initialBpm, initialTracks),
         turns: [],
 
@@ -71,7 +71,10 @@ export const useSessionStore = create<SessionStore>()(
         setBpm: (bpm) =>
           set((state) => {
             const clamped = Math.min(220, Math.max(60, bpm));
-            return { bpm: clamped, currentCode: compileCode(clamped, state.tracks) };
+            return {
+              bpm: clamped,
+              currentCode: compileCode(clamped, state.tracks),
+            };
           }),
 
         setPlaying: (value) => set({ isPlaying: value }),
@@ -104,7 +107,9 @@ export const useSessionStore = create<SessionStore>()(
         setVolume: (trackId, volume) =>
           set((state) => {
             const tracks = state.tracks.map((track) =>
-              track.id === trackId ? { ...track, volume: Math.max(0, Math.min(1, volume)) } : track
+              track.id === trackId
+                ? { ...track, volume: Math.max(0, Math.min(1, volume)) }
+                : track,
             );
 
             return {
@@ -116,7 +121,7 @@ export const useSessionStore = create<SessionStore>()(
         toggleMute: (trackId) =>
           set((state) => {
             const tracks = state.tracks.map((track) =>
-              track.id === trackId ? { ...track, muted: !track.muted } : track
+              track.id === trackId ? { ...track, muted: !track.muted } : track,
             );
 
             return {
@@ -137,7 +142,9 @@ export const useSessionStore = create<SessionStore>()(
               if (shouldUnsolo) {
                 return track.id === trackId ? { ...track, solo: false } : track;
               }
-              return track.id === trackId ? { ...track, solo: true } : { ...track, solo: false };
+              return track.id === trackId
+                ? { ...track, solo: true }
+                : { ...track, solo: false };
             });
 
             return {
@@ -152,20 +159,23 @@ export const useSessionStore = create<SessionStore>()(
           })),
 
         loadPattern: (pattern) =>
-          set({
-            bpm: pattern.bpm,
-            tracks: pattern.tracks,
-            currentCode: compileCode(pattern.bpm, pattern.tracks),
+          set(() => {
+            const nextTracks = pattern.tracks.slice(0, 5); // BR-006 defensa
+            return {
+              bpm: pattern.bpm,
+              tracks: nextTracks,
+              currentCode: compileCode(pattern.bpm, nextTracks),
+            };
           }),
       }),
       {
-        name: 'nlmusic-session',
+        name: "nlmusic-session",
         partialize: (state): PersistedState => ({
           bpm: state.bpm,
           tracks: state.tracks,
           turns: state.turns,
         }),
-      }
-    )
-  )
+      },
+    ),
+  ),
 );

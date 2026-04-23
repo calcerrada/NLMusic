@@ -7,9 +7,13 @@ export async function POST(req: NextRequest) {
   try {
     const { prompt, context } = await req.json();
 
-    if (!prompt || typeof prompt !== 'string') {
+    if (typeof prompt !== 'string' || prompt.trim() === '') {
       return NextResponse.json(
-        { error: 'Prompt inválido' },
+        {
+          success: false,
+          usedFallback: false,
+          error: 'Prompt inválido',
+        },
         { status: 400 }
       );
     }
@@ -17,7 +21,11 @@ export async function POST(req: NextRequest) {
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) {
       return NextResponse.json(
-        { error: 'Servidor no configurado: ANTHROPIC_API_KEY faltante' },
+        {
+          success: false,
+          usedFallback: false,
+          error: 'Servidor no configurado: ANTHROPIC_API_KEY faltante',
+        },
         { status: 500 }
       );
     }
@@ -51,6 +59,8 @@ export async function POST(req: NextRequest) {
     console.error('[API] generate-pattern error:', error);
     return NextResponse.json(
       {
+        success: false,
+        usedFallback: false,
         error: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }

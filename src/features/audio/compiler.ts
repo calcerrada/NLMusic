@@ -42,7 +42,7 @@ function trackToCode(track: CompilableTrack): string {
 
 export function compileToStrudel(trackJson: CompilableTrackJson): string {
   const soloed = trackJson.tracks.filter((t) => t.solo && !t.muted);
-  const activeTracks = soloed.length > 0 ? soloed : trackJson.tracks.filter((t) => !t.muted);
+  const activeTracks = soloed.length > 0 ? soloed : trackJson.tracks;
 
   const codeBlocks = activeTracks.map(trackToCode);
   const stackCode = codeBlocks.length > 0 ? `stack(${codeBlocks.join(", ")})` : 'silence';

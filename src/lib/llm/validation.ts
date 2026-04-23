@@ -14,7 +14,7 @@ const trackSchema = z.object({
 
 export const trackJsonSchema = z.object({
   bpm: z.number().int().min(60).max(220),
-  tracks: z.array(trackSchema).min(1).max(8),
+  tracks: z.array(trackSchema).min(1).max(5),
   strudelCode: z.string().optional()
 });
 

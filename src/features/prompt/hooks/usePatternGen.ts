@@ -34,61 +34,64 @@ export function usePatternGen() {
   const loadPattern = useSessionStore((s) => s.loadPattern);
   const addTurn = useSessionStore((s) => s.addTurn);
 
-  const generate = useCallback(async (prompt: string) => {
-    if (!prompt.trim()) {
-      setError('Prompt vacio');
-      return;
+const generate = useCallback(async (prompt: string): Promise<boolean> => {
+  if (!prompt.trim()) {
+    setError("Prompt vacio");
+    return false;
+  }
+
+  setIsLoading(true);
+  setError(null);
+  addTurn("user", prompt);
+
+  try {
+    const context: SessionContext = {
+      turns,
+      currentPattern: { bpm, tracks, strudelCode: currentCode },
+    };
+
+    const response = await fetch("/api/generate-pattern", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        prompt,
+        context: {
+          turns: context.turns,
+          previous: context.currentPattern,
+          language: "mixed",
+        },
+      }),
+    });
+
+    const payload = await response.json();
+    if (!response.ok || payload.success === false) {
+      throw new Error(payload.error ?? `HTTP ${response.status}`);
     }
 
-    setIsLoading(true);
-    setError(null);
-    addTurn('user', prompt);
+    const trackJson = payload.trackJson as TrackJSON;
+    const normalizedTracks = trackJson.tracks.map(normalizeTrack);
+    const normalizedPattern: TrackJSON = {
+      bpm: trackJson.bpm,
+      tracks: normalizedTracks,
+      strudelCode: compileToStrudel({ bpm: trackJson.bpm, tracks: normalizedTracks }),
+    };
 
-    try {
-      const context: SessionContext = {
-        turns,
-        currentPattern: { bpm, tracks, strudelCode: currentCode },
-      };
+    loadPattern(normalizedPattern);
+    addTurn("assistant", `Generado: ${normalizedTracks.length} pistas a ${normalizedPattern.bpm} BPM`);
 
-      const response = await fetch('/api/generate-pattern', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          prompt,
-          context: {
-            turns: context.turns,
-            previous: context.currentPattern,
-            language: 'mixed',
-          },
-        }),
-      });
-
-      const payload = await response.json();
-      if (!response.ok) {
-        throw new Error(payload.error ?? `HTTP ${response.status}`);
-      }
-
-      const trackJson = payload.trackJson as TrackJSON;
-      const normalizedTracks = trackJson.tracks.map(normalizeTrack);
-      const normalizedPattern: TrackJSON = {
-        bpm: trackJson.bpm,
-        tracks: normalizedTracks,
-        strudelCode: compileToStrudel({ bpm: trackJson.bpm, tracks: normalizedTracks }),
-      };
-
-      loadPattern(normalizedPattern);
-      addTurn('assistant', `Generado: ${normalizedTracks.length} pistas a ${normalizedPattern.bpm} BPM`);
-
-      if (payload.usedFallback) {
-        setError(`Fallback activado: ${payload.error ?? 'LLM no disponible'}`);
-      }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Error desconocido';
-      setError(message);
-    } finally {
-      setIsLoading(false);
+    if (payload.usedFallback) {
+      setError(`Fallback activado: ${payload.error ?? "LLM no disponible"}`);
     }
-  }, [addTurn, bpm, currentCode, loadPattern, tracks, turns]);
+
+    return true;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Error desconocido";
+    setError(message);
+    return false;
+  } finally {
+    setIsLoading(false);
+  }
+}, [addTurn, bpm, currentCode, loadPattern, tracks, turns]);
 
   return { generate, isLoading, error };
 }
