@@ -22,7 +22,7 @@ interface PromptBoxProps {
 export function PromptBox({ motorAvailable = true }: PromptBoxProps) {
   const [prompt, setPrompt] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
-  const { generate, isLoading, error } = usePatternGen();
+  const { generate, isLoading, error, info } = usePatternGen();
 
   // EC-010: bloquear toda la entrada cuando el motor de audio falló
   const inputDisabled = isLoading || !motorAvailable;
@@ -121,6 +121,9 @@ export function PromptBox({ motorAvailable = true }: PromptBoxProps) {
         </p>
         {error ? (
           <p className="mt-1 text-[10px] text-[var(--red)]">{error}</p>
+        ) : null}
+        {info ? (
+          <p className="mt-1 text-[10px] text-[var(--amber)]">{info}</p>
         ) : null}
       </div>
     </div>

@@ -7,18 +7,15 @@ const stubbedInitStrudel = vi.fn()
 const stubbedHush = vi.fn()
 const stubbedEvaluate = vi.fn().mockResolvedValue(undefined)
 
-vi.mock('@strudel/web', () => ({
-  initStrudel: (...args: unknown[]) => stubbedInitStrudel(...args),
-  hush: (...args: unknown[]) => stubbedHush(...args),
-  evaluate: (...args: unknown[]) => stubbedEvaluate(...args),
-}))
-
 // useStrudel uses module-level _hush/_evaluate singletons.
 // We must reset modules between tests that need a clean slate,
 // then re-import the hook so those variables start as null again.
+// vi.doMock (not vi.mock) is used here because it is NOT hoisted — it only
+// takes effect for imports that happen AFTER the call, which is what we need
+// after vi.resetModules().
 async function freshUseStrudel() {
   vi.resetModules()
-  vi.mock('@strudel/web', () => ({
+  vi.doMock('@strudel/web', () => ({
     initStrudel: (...args: unknown[]) => stubbedInitStrudel(...args),
     hush: (...args: unknown[]) => stubbedHush(...args),
     evaluate: (...args: unknown[]) => stubbedEvaluate(...args),
@@ -100,6 +97,9 @@ describe('useStrudel — EC-010: Strudel initialization robustness', () => {
       await expect(result.current.play('s("bd")')).rejects.toThrow(
         'Strudel no inicializado todavía'
       )
+
+      // Drain the async init so React state updates settle inside act()
+      await waitFor(() => expect(result.current.isReady).toBe(true))
     })
 
     it('stop() does not throw when called before hush is available', async () => {

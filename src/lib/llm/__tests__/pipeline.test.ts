@@ -101,7 +101,7 @@ describe('pipeline — runV0Pipeline', () => {
       expect(result.trackJson.strudelCode).toBeDefined()
     })
 
-    it('EC-004: fallback covers BR-006 — max 5 tracks', async () => {
+    it('EC-005: truncates responses over BR-006 limit without fallback', async () => {
       vi.mocked(mockProvider.generatePattern).mockResolvedValueOnce({
         bpm: 120,
         tracks: Array(6).fill({
@@ -117,8 +117,10 @@ describe('pipeline — runV0Pipeline', () => {
       const context: SessionContext = { turns: [], currentPattern: null }
       const result = await runV0Pipeline(mockProvider, 'test', context)
 
-      expect(result.usedFallback).toBe(true)
-      expect(result.trackJson.tracks.length).toBeLessThanOrEqual(5)
+      expect(result.usedFallback).toBe(false)
+      expect(result.truncated).toBe(true)
+      expect(result.truncatedFrom).toBe(6)
+      expect(result.trackJson.tracks).toHaveLength(5)
     })
   })
 

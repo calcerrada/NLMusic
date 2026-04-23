@@ -107,6 +107,48 @@ describe('usePatternGen — hook for LLM pattern generation', () => {
       expect(turns.length).toBeGreaterThanOrEqual(1)
       expect(turns.some((t) => t.role === 'user' && t.content === 'kick pattern')).toBe(true)
     })
+
+    it('EC-005: surfaces truncation info when API keeps only 5 tracks', async () => {
+      const truncatedResponse: TrackJSON = {
+        bpm: 128,
+        tracks: Array.from({ length: 5 }, (_, index) => ({
+          id: `track-${index + 1}`,
+          name: `Track ${index + 1}`,
+          steps: Array(16).fill(0) as (0 | 1)[],
+          volume: 0.8,
+          muted: false,
+          solo: false,
+        })),
+      }
+
+      vi.mocked(global.fetch).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          success: true,
+          trackJson: truncatedResponse,
+          truncated: true,
+          truncatedFrom: 7,
+        }),
+      } as Response)
+
+      const { result } = renderHook(() => usePatternGen())
+
+      await act(async () => {
+        await result.current.generate('añade 7 pistas')
+      })
+
+      expect(result.current.info).toContain('7 pistas')
+      expect(useSessionStore.getState().tracks).toHaveLength(5)
+      expect(
+        useSessionStore
+          .getState()
+          .turns.some(
+            (turn) =>
+              turn.role === 'assistant' &&
+              turn.content.includes('2 pistas descartadas por límite de 5')
+          )
+      ).toBe(true)
+    })
   })
 
   describe('isLoading — state management', () => {

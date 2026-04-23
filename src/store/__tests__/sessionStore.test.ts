@@ -79,6 +79,31 @@ describe('sessionStore — Zustand store with business logic', () => {
 
       expect(useSessionStore.getState().tracks).toHaveLength(5)
     })
+
+    it('EC-004: loadPattern slices defensively when pattern contains more than 5 tracks', () => {
+      const pattern: TrackJSON = {
+        bpm: 120,
+        tracks: Array.from({ length: 6 }, (_, index) => ({
+          id: `track-${index + 1}`,
+          name: `Track ${index + 1}`,
+          steps: Array(16).fill(0) as (0 | 1)[],
+          volume: 0.8,
+          muted: false,
+          solo: false,
+        })),
+      }
+
+      useSessionStore.getState().loadPattern(pattern)
+
+      expect(useSessionStore.getState().tracks).toHaveLength(5)
+      expect(useSessionStore.getState().tracks.map((track) => track.id)).toEqual([
+        'track-1',
+        'track-2',
+        'track-3',
+        'track-4',
+        'track-5',
+      ])
+    })
   })
 
   describe('setBpm — BPM clamping [60, 220]', () => {

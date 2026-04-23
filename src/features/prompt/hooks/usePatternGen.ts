@@ -23,9 +23,19 @@ function normalizeTrack(track: Track): Track {
   };
 }
 
+/**
+ * Orquesta la generación de patrones desde la UI hacia la API de NLMusic.
+ * Mantiene el estado local de carga/error y expone avisos informativos de truncamiento.
+ *
+ * @returns API de generación con estados de carga, error y aviso informativo.
+ * @see BR-001 El audio existente no se interrumpe durante LOADING
+ * @see BR-010 Prompt vacío no genera llamada al LLM
+ * @see EC-005 Respuestas con más de 5 pistas se informan sin tratarlas como error fatal
+ */
 export function usePatternGen() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
 
   const turns = useSessionStore((s) => s.turns);
   const bpm = useSessionStore((s) => s.bpm);
@@ -42,6 +52,7 @@ const generate = useCallback(async (prompt: string): Promise<boolean> => {
 
   setIsLoading(true);
   setError(null);
+  setInfo(null);
   addTurn("user", prompt);
 
   try {
@@ -77,7 +88,15 @@ const generate = useCallback(async (prompt: string): Promise<boolean> => {
     };
 
     loadPattern(normalizedPattern);
-    addTurn("assistant", `Generado: ${normalizedTracks.length} pistas a ${normalizedPattern.bpm} BPM`);
+
+    // EC-005: informamos el truncamiento sin convertirlo en error fatal.
+    if (payload.truncated && payload.truncatedFrom) {
+      const notice = `El LLM propuso ${payload.truncatedFrom} pistas; se mantuvieron 5 (límite BR-006). Elimina alguna para añadir más.`;
+      setInfo(notice);
+      addTurn("assistant", `Generado: ${normalizedTracks.length} pistas a ${normalizedPattern.bpm} BPM (${payload.truncatedFrom - 5} pistas descartadas por límite de 5)`);
+    } else {
+      addTurn("assistant", `Generado: ${normalizedTracks.length} pistas a ${normalizedPattern.bpm} BPM`);
+    }
 
     if (payload.usedFallback) {
       setError(`Fallback activado: ${payload.error ?? "LLM no disponible"}`);
@@ -93,5 +112,5 @@ const generate = useCallback(async (prompt: string): Promise<boolean> => {
   }
 }, [addTurn, bpm, currentCode, loadPattern, tracks, turns]);
 
-  return { generate, isLoading, error };
+  return { generate, isLoading, error, info };
 }

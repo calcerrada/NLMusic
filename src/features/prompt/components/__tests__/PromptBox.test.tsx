@@ -9,6 +9,7 @@ vi.mock('@features/prompt/hooks/usePatternGen', () => ({
     generate: vi.fn().mockResolvedValue(true),
     isLoading: false,
     error: null,
+    info: null,
   })),
 }))
 
@@ -89,6 +90,7 @@ describe('PromptBox — EC-010: disabled when motorAvailable=false', () => {
         generate: generateMock,
         isLoading: false,
         error: null,
+        info: null,
       })
 
       render(<PromptBox motorAvailable={false} />)
@@ -124,11 +126,28 @@ describe('PromptBox — EC-010: disabled when motorAvailable=false', () => {
         generate: vi.fn().mockResolvedValue(false),
         isLoading: false,
         error: 'Error de red',
+        info: null,
       })
 
       render(<PromptBox motorAvailable />)
 
       expect(screen.getByText('Error de red')).toBeInTheDocument()
+    })
+
+    it('shows truncation info message from usePatternGen', async () => {
+      const { usePatternGen } = await import('@features/prompt/hooks/usePatternGen')
+      vi.mocked(usePatternGen).mockReturnValue({
+        generate: vi.fn().mockResolvedValue(true),
+        isLoading: false,
+        error: null,
+        info: 'El LLM propuso 7 pistas; se mantuvieron 5 (límite BR-006).',
+      })
+
+      render(<PromptBox motorAvailable />)
+
+      expect(
+        screen.getByText('El LLM propuso 7 pistas; se mantuvieron 5 (límite BR-006).')
+      ).toBeInTheDocument()
     })
   })
 })
