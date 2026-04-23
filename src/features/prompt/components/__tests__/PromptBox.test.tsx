@@ -7,10 +7,18 @@ import { PromptBox } from '../PromptBox'
 vi.mock('@features/prompt/hooks/usePatternGen', () => ({
   usePatternGen: vi.fn(() => ({
     generate: vi.fn().mockResolvedValue(true),
+    retry: vi.fn(),
     isLoading: false,
     error: null,
     info: null,
   })),
+}))
+
+// Mock useSessionStore — PromptBox reads uiState for error banner
+vi.mock('@store/sessionStore', () => ({
+  useSessionStore: vi.fn((selector: (s: { uiState: string }) => unknown) =>
+    selector({ uiState: 'idle' })
+  ),
 }))
 
 const DISABLED_REASON =
@@ -88,6 +96,7 @@ describe('PromptBox — EC-010: disabled when motorAvailable=false', () => {
       const generateMock = vi.fn().mockResolvedValue(true)
       vi.mocked(usePatternGen).mockReturnValue({
         generate: generateMock,
+        retry: vi.fn(),
         isLoading: false,
         error: null,
         info: null,
@@ -120,28 +129,38 @@ describe('PromptBox — EC-010: disabled when motorAvailable=false', () => {
   })
 
   describe('error display', () => {
-    it('shows error message from usePatternGen', async () => {
+    it('shows error banner and retry button when uiState=error', async () => {
       const { usePatternGen } = await import('@features/prompt/hooks/usePatternGen')
+      const { useSessionStore } = await import('@store/sessionStore')
       vi.mocked(usePatternGen).mockReturnValue({
         generate: vi.fn().mockResolvedValue(false),
+        retry: vi.fn(),
         isLoading: false,
         error: 'Error de red',
         info: null,
       })
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      vi.mocked(useSessionStore).mockImplementation((selector: any) => selector({ uiState: 'error' }))
 
       render(<PromptBox motorAvailable />)
 
       expect(screen.getByText('Error de red')).toBeInTheDocument()
+      expect(screen.getByText('Reintentar')).toBeInTheDocument()
     })
 
     it('shows truncation info message from usePatternGen', async () => {
       const { usePatternGen } = await import('@features/prompt/hooks/usePatternGen')
+      const { useSessionStore } = await import('@store/sessionStore')
       vi.mocked(usePatternGen).mockReturnValue({
         generate: vi.fn().mockResolvedValue(true),
+        retry: vi.fn(),
         isLoading: false,
         error: null,
         info: 'El LLM propuso 7 pistas; se mantuvieron 5 (límite BR-006).',
       })
+      // PromptBox solo muestra info cuando no está en estado global de error.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      vi.mocked(useSessionStore).mockImplementation((selector: any) => selector({ uiState: 'idle' }))
 
       render(<PromptBox motorAvailable />)
 

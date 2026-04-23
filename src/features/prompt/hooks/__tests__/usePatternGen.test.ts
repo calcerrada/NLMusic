@@ -259,6 +259,63 @@ describe('usePatternGen — hook for LLM pattern generation', () => {
       expect(success).toBe(false)
       expect(result.current.error).toBeDefined()
     })
+
+    it('stores lastPrompt and enters error state after a failed request', async () => {
+      vi.mocked(global.fetch).mockRejectedValueOnce(new Error('Network timeout'))
+
+      const { result } = renderHook(() => usePatternGen())
+
+      await act(async () => {
+        await result.current.generate('reintenta este prompt')
+      })
+
+      const state = useSessionStore.getState()
+      expect(state.lastPrompt).toBe('reintenta este prompt')
+      expect(state.uiState).toBe('error')
+      expect(state.lastError).toContain('Network timeout')
+    })
+
+    it('retry() reuses lastPrompt and transitions through loading back to success', async () => {
+      vi.mocked(global.fetch)
+        .mockRejectedValueOnce(new Error('Network timeout'))
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            success: true,
+            trackJson: {
+              bpm: 122,
+              tracks: [
+                {
+                  id: 'kick-1',
+                  name: 'Kick',
+                  steps: Array(16).fill(0) as (0 | 1)[],
+                  volume: 0.85,
+                  muted: false,
+                  solo: false,
+                },
+              ],
+            },
+          }),
+        } as Response)
+
+      const { result } = renderHook(() => usePatternGen())
+
+      await act(async () => {
+        await result.current.generate('mismo prompt')
+      })
+
+      expect(useSessionStore.getState().uiState).toBe('error')
+
+      await act(async () => {
+        result.current.retry()
+        await Promise.resolve()
+      })
+
+      expect(global.fetch).toHaveBeenCalledTimes(2)
+      expect(useSessionStore.getState().lastPrompt).toBe('mismo prompt')
+      expect(useSessionStore.getState().uiState).toBe('playing')
+      expect(useSessionStore.getState().lastError).toBeNull()
+    })
   })
 
   describe('BR-003: uniform error handling', () => {

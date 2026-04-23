@@ -362,6 +362,8 @@ describe('sessionStore — Zustand store with business logic', () => {
       expect(state.tracks).toHaveLength(2)
       expect(state.tracks[0].name).toBe('Kick')
       expect(state.tracks[1].name).toBe('Snare')
+      expect(state.isPlaying).toBe(true)
+      expect(state.uiState).toBe('playing')
     })
 
     it('updates currentCode from loaded pattern', () => {
@@ -399,10 +401,70 @@ describe('sessionStore — Zustand store with business logic', () => {
     })
   })
 
+  describe('TASK-04 — error state and retry transitions', () => {
+    it('startLoading transitions to loading without dropping current tracks', () => {
+      useSessionStore.getState().setTracks([
+        {
+          id: 'kick-1',
+          name: 'Kick',
+          steps: Array(16).fill(0) as (0 | 1)[],
+          volume: 0.8,
+          muted: false,
+          solo: false,
+        },
+      ])
+      useSessionStore.getState().setPlaying(true)
+
+      useSessionStore.getState().startLoading()
+
+      const state = useSessionStore.getState()
+      expect(state.uiState).toBe('loading')
+      expect(state.tracks).toHaveLength(1)
+      expect(state.isPlaying).toBe(true)
+    })
+
+    it('clearError restores playing state when audio was active', () => {
+      useSessionStore.setState({
+        tracks: [
+          {
+            id: 'kick-1',
+            name: 'Kick',
+            steps: Array(16).fill(0) as (0 | 1)[],
+            volume: 0.8,
+            muted: false,
+            solo: false,
+          },
+        ],
+        isPlaying: true,
+        uiState: 'error',
+        lastError: 'Network timeout',
+      })
+
+      useSessionStore.getState().clearError()
+
+      const state = useSessionStore.getState()
+      expect(state.lastError).toBeNull()
+      expect(state.uiState).toBe('playing')
+    })
+
+    it('retry transitions to loading and returns lastPrompt', () => {
+      useSessionStore.setState({
+        uiState: 'error',
+        lastError: 'Network timeout',
+        lastPrompt: 'reintenta este prompt',
+      })
+
+      const prompt = useSessionStore.getState().retry()
+
+      const state = useSessionStore.getState()
+      expect(prompt).toBe('reintenta este prompt')
+      expect(state.uiState).toBe('loading')
+      expect(state.lastError).toBeNull()
+    })
+  })
+
   describe('EC-007: delete last track while PLAYING → IDLE', () => {
-    it('documents that track deletion is handled by parent logic', () => {
-      // Track deletion (UI handler) triggers setTracks([])
-      // which should lead to app → IDLE state
+    it('setTracks([]) transitions store to idle and stops playback', () => {
       const track: Track = {
         id: 'kick-1',
         name: 'Kick',
@@ -417,8 +479,10 @@ describe('sessionStore — Zustand store with business logic', () => {
       // Simulate delete last track
       useSessionStore.getState().setTracks([])
 
-      expect(useSessionStore.getState().tracks).toHaveLength(0)
-      // Note: state machine transition to IDLE would be in UI layer
+      const state = useSessionStore.getState()
+      expect(state.tracks).toHaveLength(0)
+      expect(state.isPlaying).toBe(false)
+      expect(state.uiState).toBe('idle')
     })
   })
 

@@ -24,6 +24,25 @@ function normalizeTrack(track: Track): Track {
 }
 
 /**
+ * Ejecuta la transición de reintento desde estado ERROR.
+ * Centraliza ERROR -> LOADING en el store y relanza el flujo con el último prompt válido.
+ *
+ * @param storeRetry - Acción global que devuelve el prompt a reintentar.
+ * @param generate - Función principal de generación usada también en submit normal.
+ * @see BR-003 Errores y reintento se gestionan de forma uniforme
+ * @see EC-002 Reintento tras error de red sin reescribir prompt
+ */
+function retryFromStore(
+  storeRetry: () => string | null,
+  generate: (prompt: string) => Promise<boolean>
+): void {
+  const prompt = storeRetry();
+  if (prompt) {
+    void generate(prompt);
+  }
+}
+
+/**
  * Orquesta la generación de patrones desde la UI hacia la API de NLMusic.
  * Mantiene el estado local de carga/error y expone avisos informativos de truncamiento.
  *
@@ -34,83 +53,96 @@ function normalizeTrack(track: Track): Track {
  */
 export function usePatternGen() {
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
 
   const turns = useSessionStore((s) => s.turns);
   const bpm = useSessionStore((s) => s.bpm);
   const tracks = useSessionStore((s) => s.tracks);
   const currentCode = useSessionStore((s) => s.currentCode);
+  const lastError = useSessionStore((s) => s.lastError);
   const loadPattern = useSessionStore((s) => s.loadPattern);
   const addTurn = useSessionStore((s) => s.addTurn);
+  const startLoading = useSessionStore((s) => s.startLoading);
+  const storeRetry = useSessionStore((s) => s.retry);
+  const storeSetError = useSessionStore((s) => s.setError);
+  const setLastPrompt = useSessionStore((s) => s.setLastPrompt);
 
-const generate = useCallback(async (prompt: string): Promise<boolean> => {
-  if (!prompt.trim()) {
-    setError("Prompt vacio");
-    return false;
-  }
-
-  setIsLoading(true);
-  setError(null);
-  setInfo(null);
-  addTurn("user", prompt);
-
-  try {
-    const context: SessionContext = {
-      turns,
-      currentPattern: { bpm, tracks, strudelCode: currentCode },
-    };
-
-    const response = await fetch("/api/generate-pattern", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        prompt,
-        context: {
-          turns: context.turns,
-          previous: context.currentPattern,
-          language: "mixed",
-        },
-      }),
-    });
-
-    const payload = await response.json();
-    if (!response.ok || payload.success === false) {
-      throw new Error(payload.error ?? `HTTP ${response.status}`);
+  const generate = useCallback(async (prompt: string): Promise<boolean> => {
+    // BR-010: prompt vacío no llama al LLM
+    if (!prompt.trim()) {
+      storeSetError("Prompt vacío");
+      return false;
     }
 
-    const trackJson = payload.trackJson as TrackJSON;
-    const normalizedTracks = trackJson.tracks.map(normalizeTrack);
-    const normalizedPattern: TrackJSON = {
-      bpm: trackJson.bpm,
-      tracks: normalizedTracks,
-      strudelCode: compileToStrudel({ bpm: trackJson.bpm, tracks: normalizedTracks }),
-    };
+    setIsLoading(true);
+    startLoading();
+    setInfo(null);
+    setLastPrompt(prompt);
+    addTurn("user", prompt);
 
-    loadPattern(normalizedPattern);
+    try {
+      const context: SessionContext = {
+        turns,
+        currentPattern: { bpm, tracks, strudelCode: currentCode },
+      };
 
-    // EC-005: informamos el truncamiento sin convertirlo en error fatal.
-    if (payload.truncated && payload.truncatedFrom) {
-      const notice = `El LLM propuso ${payload.truncatedFrom} pistas; se mantuvieron 5 (límite BR-006). Elimina alguna para añadir más.`;
-      setInfo(notice);
-      addTurn("assistant", `Generado: ${normalizedTracks.length} pistas a ${normalizedPattern.bpm} BPM (${payload.truncatedFrom - 5} pistas descartadas por límite de 5)`);
-    } else {
-      addTurn("assistant", `Generado: ${normalizedTracks.length} pistas a ${normalizedPattern.bpm} BPM`);
+      const response = await fetch("/api/generate-pattern", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt,
+          context: {
+            turns: context.turns,
+            previous: context.currentPattern,
+            language: "mixed",
+          },
+        }),
+      });
+
+      const payload = await response.json();
+      if (!response.ok || payload.success === false) {
+        throw new Error(payload.error ?? `HTTP ${response.status}`);
+      }
+
+      const trackJson = payload.trackJson as TrackJSON;
+      const normalizedTracks = trackJson.tracks.map(normalizeTrack);
+      const normalizedPattern: TrackJSON = {
+        bpm: trackJson.bpm,
+        tracks: normalizedTracks,
+        strudelCode: compileToStrudel({ bpm: trackJson.bpm, tracks: normalizedTracks }),
+      };
+
+      loadPattern(normalizedPattern);
+
+      // EC-005: informamos el truncamiento sin convertirlo en error fatal.
+      if (payload.truncated && payload.truncatedFrom) {
+        const notice = `El LLM propuso ${payload.truncatedFrom} pistas; se mantuvieron 5 (límite BR-006). Elimina alguna para añadir más.`;
+        setInfo(notice);
+        addTurn("assistant", `Generado: ${normalizedTracks.length} pistas a ${normalizedPattern.bpm} BPM (${payload.truncatedFrom - 5} pistas descartadas por límite de 5)`);
+      } else {
+        addTurn("assistant", `Generado: ${normalizedTracks.length} pistas a ${normalizedPattern.bpm} BPM`);
+      }
+
+      // BR-003: fallback también se comunica como estado de error recuperable.
+      if (payload.usedFallback) {
+        storeSetError(`Fallback activado: ${payload.error ?? "LLM no disponible"}`);
+      }
+
+      return true;
+    } catch (err) {
+      // BR-003: cualquier error → informar, mantener estado, ofrecer reintento
+      const message = err instanceof Error ? err.message : "Error desconocido";
+      storeSetError(message);
+      return false;
+    } finally {
+      setIsLoading(false);
     }
+  }, [addTurn, bpm, currentCode, loadPattern, setLastPrompt, startLoading, storeSetError, tracks, turns]);
 
-    if (payload.usedFallback) {
-      setError(`Fallback activado: ${payload.error ?? "LLM no disponible"}`);
-    }
+  // BR-003: reintento — reutiliza lastPrompt del store sin que el usuario reescriba
+  const retry = useCallback(() => {
+    retryFromStore(storeRetry, generate);
+  }, [generate, storeRetry]);
 
-    return true;
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Error desconocido";
-    setError(message);
-    return false;
-  } finally {
-    setIsLoading(false);
-  }
-}, [addTurn, bpm, currentCode, loadPattern, tracks, turns]);
-
-  return { generate, isLoading, error, info };
+  return { generate, retry, isLoading, error: lastError, info };
 }
