@@ -108,7 +108,7 @@ interface Track {
   name: string
   tag: 'kick' | 'snare' | 'hihat' | 'clap' | 'perc' | string
   steps: (0 | 1)[]   // siempre 16 elementos
-  volume: number      // 0.0 - 1.0
+  volume: number     // 0.0 - 1.0
   muted: boolean
   solo: boolean
 }
