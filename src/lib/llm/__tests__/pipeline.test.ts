@@ -35,7 +35,7 @@ describe('pipeline — runV0Pipeline', () => {
     it('returns compiled TrackJSON on successful replace operation', async () => {
       vi.mocked(mockProvider.generatePattern).mockResolvedValueOnce(replaceOneDelta(120))
 
-      const context: SessionContext = { turns: [], currentPattern: null }
+      const context: SessionContext = { turns: [] }
       const result = await runV0Pipeline(mockProvider, 'test prompt', context)
 
       expect(result.usedFallback).toBe(false)
@@ -65,7 +65,7 @@ describe('pipeline — runV0Pipeline', () => {
         ],
       })
 
-      const context: SessionContext = { turns: [], currentPattern: null }
+      const context: SessionContext = { turns: [] }
       const result = await runV0Pipeline(mockProvider, 'test', context)
 
       expect(result.trackJson.strudelCode).toBeTruthy()
@@ -202,7 +202,7 @@ describe('pipeline — runV0Pipeline', () => {
         ],
       })
 
-      const context: SessionContext = { turns: [], currentPattern: null }
+      const context: SessionContext = { turns: [] }
       const result = await runV0Pipeline(mockProvider, 'test', context)
 
       expect(result.usedFallback).toBe(false)
@@ -249,7 +249,7 @@ describe('pipeline — runV0Pipeline', () => {
         operations: [],
       } as unknown as PatternDelta)
 
-      const context: SessionContext = { turns: [], currentPattern: null }
+      const context: SessionContext = { turns: [] }
       const result = await runV0Pipeline(mockProvider, 'test', context)
 
       expect(result.usedFallback).toBe(true)
@@ -263,7 +263,7 @@ describe('pipeline — runV0Pipeline', () => {
     it('catches provider rejection and returns fallback', async () => {
       vi.mocked(mockProvider.generatePattern).mockRejectedValueOnce(new Error('Network timeout'))
 
-      const context: SessionContext = { turns: [], currentPattern: null }
+      const context: SessionContext = { turns: [] }
       const result = await runV0Pipeline(mockProvider, 'test', context)
 
       expect(result.usedFallback).toBe(true)
@@ -275,7 +275,7 @@ describe('pipeline — runV0Pipeline', () => {
     it('catches non-Error rejections gracefully', async () => {
       vi.mocked(mockProvider.generatePattern).mockRejectedValueOnce('Unknown error string')
 
-      const context: SessionContext = { turns: [], currentPattern: null }
+      const context: SessionContext = { turns: [] }
       const result = await runV0Pipeline(mockProvider, 'test', context)
 
       expect(result.usedFallback).toBe(true)
@@ -287,7 +287,7 @@ describe('pipeline — runV0Pipeline', () => {
     it('does not modify context or previous state on error', async () => {
       const originalContext: SessionContext = {
         turns: [{ role: 'user', content: 'first prompt' }],
-        currentPattern: {
+        previous: {
           bpm: 120,
           tracks: [{ id: 'kick-1', name: 'Kick', steps: Array(16).fill(0) as (0 | 1)[], volume: 0.8, muted: false, solo: false }],
         },
@@ -298,14 +298,14 @@ describe('pipeline — runV0Pipeline', () => {
       const result = await runV0Pipeline(mockProvider, 'new prompt', originalContext)
 
       expect(originalContext.turns).toHaveLength(1)
-      expect(originalContext.currentPattern?.bpm).toBe(120)
+      expect(originalContext.previous?.bpm).toBe(120)
       expect(result.usedFallback).toBe(true)
     })
   })
 
   describe('BR-003: uniform error handling', () => {
     it('treats validation error and network error identically', async () => {
-      const context: SessionContext = { turns: [], currentPattern: null }
+      const context: SessionContext = { turns: [] }
 
       vi.mocked(mockProvider.generatePattern).mockResolvedValueOnce({ bpm: 'invalid' as unknown as number } as unknown as PatternDelta)
       const result1 = await runV0Pipeline(mockProvider, 'test', context)

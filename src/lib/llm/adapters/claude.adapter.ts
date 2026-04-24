@@ -52,9 +52,14 @@ function normalizeToDelta(raw: unknown): PatternDelta {
   throw new Error("LLM returned unexpected format (no 'operations' or 'tracks').");
 }
 
+/**
+ * Construye el prompt de usuario con snapshot del patrón previo y turnos recientes.
+ * El contexto usa exclusivamente `previous` para que el contrato cliente/API/adapter
+ * sea consistente en TASK-06.
+ */
 function buildUserPrompt(prompt: string, context: SessionContext): string {
-  const currentTracks = context.previous?.tracks ?? context.currentPattern?.tracks ?? [];
-  const currentBpm = context.previous?.bpm ?? context.currentPattern?.bpm;
+  const currentTracks = context.previous?.tracks ?? [];
+  const currentBpm = context.previous?.bpm;
 
   const trackLines =
     currentTracks.length > 0

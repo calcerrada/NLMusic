@@ -1,4 +1,5 @@
 // @vitest-environment node
+import { describe, it, expect } from 'vitest'
 import { applyDelta } from '@lib/llm/applyDelta'
 import type { PatternDelta, TrackJSON } from '@lib/types'
 

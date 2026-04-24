@@ -5,9 +5,13 @@ export interface SessionTurn {
   content: string;
 }
 
+/**
+ * Contexto conversacional enviado al adaptador LLM.
+ * `previous` es el único snapshot vigente del patrón anterior para evitar
+ * ambiguedad con aliases históricos del contrato.
+ */
 export interface SessionContext {
   turns: SessionTurn[];
-  currentPattern?: TrackJSON | null;
   previous?: TrackJSON;
   language?: 'es' | 'en' | 'mixed';
 }

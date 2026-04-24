@@ -34,18 +34,27 @@ function resolveSample(track: CompilableTrack): string {
 // - .slow(4) stretches 16 elements across 4 cycles (4 beats = 1 bar)
 // - Result: each element = 1 sixteenth note, properly timed
 
-function trackToCode(track: CompilableTrack): string {
-  const pattern = stepsToPattern(resolveSample(track), track.steps as number[]);
-  const gain = track.muted ? 0 : track.volume;
-  return `s("${pattern}").gain(${gain.toFixed(2)})`;
-}
-
+/**
+ * Compila el estado del secuenciador a código Strudel ejecutable.
+ * Mantiene todas las pistas dentro de stack() y silencia con gain(0)
+ * para evitar reconfiguraciones de voces al alternar mute/solo.
+ *
+ * @param trackJson - Patrón actual con bpm y pistas normalizadas.
+ * @returns Código Strudel listo para evaluar en el motor de audio.
+ * @see BR-001 El audio no se interrumpe al mutear/solear pistas
+ */
 export function compileToStrudel(trackJson: CompilableTrackJson): string {
-  const soloed = trackJson.tracks.filter((t) => t.solo && !t.muted);
-  const activeTracks = soloed.length > 0 ? soloed : trackJson.tracks;
+  const hasSolo = trackJson.tracks.some((t) => t.solo);
 
-  const codeBlocks = activeTracks.map(trackToCode);
+  const codeBlocks = trackJson.tracks.map((track) => {
+    // BR-001: muted/non-solo tracks stay in the stack with gain(0) so Strudel
+    // never restructures the voice graph — avoids clicks and pops on toggle
+    const silenced = track.muted || (hasSolo && !track.solo);
+    const pattern = stepsToPattern(resolveSample(track), track.steps);
+    const gain = silenced ? 0 : track.volume;
+    return `s("${pattern}").gain(${gain.toFixed(2)})`;
+  });
+
   const stackCode = codeBlocks.length > 0 ? `stack(${codeBlocks.join(", ")})` : 'silence';
-
   return `${stackCode}.slow(4).cpm(${trackJson.bpm.toFixed(2)})`;
 }

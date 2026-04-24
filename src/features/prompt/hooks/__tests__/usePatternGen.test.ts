@@ -62,7 +62,7 @@ describe('usePatternGen — hook for LLM pattern generation', () => {
 
       vi.mocked(global.fetch).mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ success: true, trackJson: validResponse }),
+        json: async () => ({ ok: true, source: 'llm', trackJson: validResponse }),
       } as any)
 
       const { result } = renderHook(() => usePatternGen())
@@ -94,7 +94,7 @@ describe('usePatternGen — hook for LLM pattern generation', () => {
 
       vi.mocked(global.fetch).mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ success: true, trackJson: validResponse }),
+        json: async () => ({ ok: true, source: 'llm', trackJson: validResponse }),
       } as any)
 
       const { result } = renderHook(() => usePatternGen())
@@ -106,6 +106,41 @@ describe('usePatternGen — hook for LLM pattern generation', () => {
       const turns = useSessionStore.getState().turns
       expect(turns.length).toBeGreaterThanOrEqual(1)
       expect(turns.some((t) => t.role === 'user' && t.content === 'kick pattern')).toBe(true)
+    })
+
+    it('TASK-06: sends context.previous and never sends currentPattern alias', async () => {
+      const validResponse: TrackJSON = {
+        bpm: 120,
+        tracks: [
+          {
+            id: 'kick-1',
+            name: 'Kick',
+            steps: Array(16).fill(0) as (0 | 1)[],
+            volume: 0.85,
+            muted: false,
+            solo: false,
+          },
+        ],
+      }
+
+      vi.mocked(global.fetch).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ ok: true, source: 'llm', trackJson: validResponse }),
+      } as any)
+
+      const { result } = renderHook(() => usePatternGen())
+
+      await act(async () => {
+        await result.current.generate('context coherence check')
+      })
+
+      const requestInit = vi.mocked(global.fetch).mock.calls[0][1] as RequestInit
+      const body = JSON.parse(String(requestInit.body)) as {
+        context: { previous?: unknown; currentPattern?: unknown }
+      }
+
+      expect(body.context.previous).toBeDefined()
+      expect(body.context.currentPattern).toBeUndefined()
     })
 
     it('EC-005/BR-006: surfaces warnings when delta hits track limit', async () => {
@@ -124,7 +159,8 @@ describe('usePatternGen — hook for LLM pattern generation', () => {
       vi.mocked(global.fetch).mockResolvedValueOnce({
         ok: true,
         json: async () => ({
-          success: true,
+          ok: true,
+          source: 'llm',
           trackJson: limitedResponse,
           warnings: ['Reemplazo propuso 7 pistas; se mantuvieron 5 (BR-006).'],
         }),
@@ -159,7 +195,8 @@ describe('usePatternGen — hook for LLM pattern generation', () => {
         return {
           ok: true,
           json: async () => ({
-            success: true,
+            ok: true,
+            source: 'llm',
             trackJson: {
               bpm: 120,
               tracks: [
@@ -190,14 +227,14 @@ describe('usePatternGen — hook for LLM pattern generation', () => {
     })
   })
 
-  describe('EC-001: LLM returns invalid JSON', () => {
-    it('catches validation error and sets error state', async () => {
+  describe('EC-001: LLM returns invalid JSON — fallback activates', () => {
+    it('fallback loads pattern as non-blocking info (not error state)', async () => {
       vi.mocked(global.fetch).mockResolvedValueOnce({
         ok: true,
         json: async () => ({
-          success: false,
-          error: 'Invalid schema',
-          usedFallback: true,
+          ok: true,
+          source: 'fallback',
+          warning: 'LLM returned invalid schema',
           trackJson: {
             bpm: 138,
             tracks: [
@@ -221,8 +258,31 @@ describe('usePatternGen — hook for LLM pattern generation', () => {
         success = await result.current.generate('invalid pattern')
       })
 
+      // Fallback is treated as info, not error — pattern still loads
+      expect(success).toBe(true)
+      expect(result.current.error).toBeNull()
+      expect(result.current.info).toContain('invalid schema')
+      expect(useSessionStore.getState().tracks).toHaveLength(1)
+    })
+
+    it('hard error (ok: false in payload) sets error state', async () => {
+      vi.mocked(global.fetch).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          ok: false,
+          error: 'Servidor no configurado',
+        }),
+      } as any)
+
+      const { result } = renderHook(() => usePatternGen())
+
+      let success = false
+      await act(async () => {
+        success = await result.current.generate('test')
+      })
+
       expect(success).toBe(false)
-      expect(result.current.error).toContain('Invalid schema')
+      expect(result.current.error).toContain('Servidor no configurado')
     })
   })
 
@@ -280,7 +340,8 @@ describe('usePatternGen — hook for LLM pattern generation', () => {
         .mockResolvedValueOnce({
           ok: true,
           json: async () => ({
-            success: true,
+            ok: true,
+            source: 'llm',
             trackJson: {
               bpm: 122,
               tracks: [
@@ -295,7 +356,7 @@ describe('usePatternGen — hook for LLM pattern generation', () => {
               ],
             },
           }),
-        } as Response)
+        } as unknown as Response)
 
       const { result } = renderHook(() => usePatternGen())
 
@@ -402,7 +463,7 @@ describe('usePatternGen — hook for LLM pattern generation', () => {
 
       vi.mocked(global.fetch).mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ success: true, trackJson: responseWithoutTag }),
+        json: async () => ({ ok: true, source: 'llm', trackJson: responseWithoutTag }),
       } as any)
 
       const { result } = renderHook(() => usePatternGen())
@@ -434,7 +495,7 @@ describe('usePatternGen — hook for LLM pattern generation', () => {
 
       vi.mocked(global.fetch).mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ success: true, trackJson: validResponse }),
+        json: async () => ({ ok: true, source: 'llm', trackJson: validResponse }),
       } as any)
 
       const { result } = renderHook(() => usePatternGen())

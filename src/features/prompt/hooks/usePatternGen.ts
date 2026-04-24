@@ -3,8 +3,12 @@
 import { useCallback, useState } from 'react';
 import { useSessionStore } from '@store/sessionStore';
 import { compileToStrudel } from '@features/audio';
-import type { SessionContext, Track, TrackJSON } from '@lib/types';
+import type { Track, TrackJSON } from '@lib/types';
 
+/**
+ * Infere una etiqueta instrumental cuando el origen no la define explícitamente.
+ * Esto mantiene colores/comportamiento consistentes en UI aunque el payload llegue incompleto.
+ */
 function inferTag(track: { name: string; sample?: string; tag?: string }): string {
   const base = `${track.tag ?? ''} ${track.sample ?? ''} ${track.name}`.toLowerCase();
   if (base.includes('kick') || base.includes('bd')) return 'kick';
@@ -15,6 +19,9 @@ function inferTag(track: { name: string; sample?: string; tag?: string }): strin
   return 'perc';
 }
 
+/**
+ * Normaliza pasos y tag para trabajar con un TrackJSON estable en store/compilador.
+ */
 function normalizeTrack(track: Track): Track {
   return {
     ...track,
@@ -25,10 +32,6 @@ function normalizeTrack(track: Track): Track {
 
 /**
  * Ejecuta la transición de reintento desde estado ERROR.
- * Centraliza ERROR -> LOADING en el store y relanza el flujo con el último prompt válido.
- *
- * @param storeRetry - Acción global que devuelve el prompt a reintentar.
- * @param generate - Función principal de generación usada también en submit normal.
  * @see BR-003 Errores y reintento se gestionan de forma uniforme
  * @see EC-002 Reintento tras error de red sin reescribir prompt
  */
@@ -44,12 +47,9 @@ function retryFromStore(
 
 /**
  * Orquesta la generación de patrones desde la UI hacia la API de NLMusic.
- * Mantiene el estado local de carga/error y expone avisos informativos de truncamiento.
  *
- * @returns API de generación con estados de carga, error y aviso informativo.
  * @see BR-001 El audio existente no se interrumpe durante LOADING
  * @see BR-010 Prompt vacío no genera llamada al LLM
- * @see EC-005 Respuestas con más de 5 pistas se informan sin tratarlas como error fatal
  */
 export function usePatternGen() {
   const [isLoading, setIsLoading] = useState(false);
@@ -81,26 +81,24 @@ export function usePatternGen() {
     addTurn("user", prompt);
 
     try {
-      const context: SessionContext = {
-        turns,
-        currentPattern: { bpm, tracks, strudelCode: currentCode },
-      };
-
       const response = await fetch("/api/generate-pattern", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           prompt,
           context: {
-            turns: context.turns,
-            previous: context.currentPattern,
+            turns,
+            // Contrato TASK-06: usar solo `previous` como snapshot previo
+            previous: { bpm, tracks, strudelCode: currentCode },
             language: "mixed",
           },
         }),
       });
 
       const payload = await response.json();
-      if (!response.ok || payload.success === false) {
+
+      // Hard error: non-OK HTTP or explicit ok: false in body
+      if (!response.ok || !payload.ok) {
         throw new Error(payload.error ?? `HTTP ${response.status}`);
       }
 
@@ -114,25 +112,26 @@ export function usePatternGen() {
 
       loadPattern(normalizedPattern);
 
-      const warnings: string[] = Array.isArray(payload.warnings) ? payload.warnings : [];
-
-      if (warnings.length > 0) {
-        // BR-005/BR-006: warnings son informativos, no fatales — mostrar como turno de asistente
-        const warningText = warnings.join(" | ");
-        setInfo(warningText);
-        addTurn("assistant", `Generado: ${normalizedTracks.length} pistas a ${normalizedPattern.bpm} BPM. Avisos: ${warningText}`);
+      if (payload.source === 'fallback') {
+        // EC-001/EC-002: fallback válido informa sin forzar estado ERROR
+        const fallbackMsg = payload.warning ?? 'LLM no disponible — patrón de fallback cargado';
+        setInfo(fallbackMsg);
+        addTurn("assistant", `Fallback: ${normalizedTracks.length} pistas — ${fallbackMsg}`);
       } else {
-        addTurn("assistant", `Generado: ${normalizedTracks.length} pistas a ${normalizedPattern.bpm} BPM`);
-      }
-
-      // BR-003: fallback también se comunica como estado de error recuperable.
-      if (payload.usedFallback) {
-        storeSetError(`Fallback activado: ${payload.error ?? "LLM no disponible"}`);
+        // LLM success — surface any delta warnings (BR-005/BR-006)
+        const warnings: string[] = Array.isArray(payload.warnings) ? payload.warnings : [];
+        if (warnings.length > 0) {
+          const warningText = warnings.join(" | ");
+          setInfo(warningText);
+          addTurn("assistant", `Generado: ${normalizedTracks.length} pistas a ${normalizedPattern.bpm} BPM. Avisos: ${warningText}`);
+        } else {
+          addTurn("assistant", `Generado: ${normalizedTracks.length} pistas a ${normalizedPattern.bpm} BPM`);
+        }
       }
 
       return true;
     } catch (err) {
-      // BR-003: cualquier error → informar, mantener estado, ofrecer reintento
+      // BR-003: cualquier error real → informar, mantener estado y habilitar reintento
       const message = err instanceof Error ? err.message : "Error desconocido";
       storeSetError(message);
       return false;

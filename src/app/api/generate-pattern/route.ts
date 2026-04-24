@@ -3,36 +3,38 @@ import { ClaudeAdapter } from '@lib/llm/adapters/claude.adapter';
 import { runV0Pipeline } from '@lib/llm/pipeline';
 import type { SessionContext } from '@lib/types';
 
+/**
+ * Genera un patrón musical y devuelve un contrato API explícito.
+ * Un fallback válido responde con ok=true para no bloquear reproducción;
+ * solo errores reales de request/configuración responden con ok=false.
+ *
+ * @see BR-002 La respuesta aplicada debe cumplir schema válido
+ * @see BR-011 La API key nunca se expone al cliente
+ */
 export async function POST(req: NextRequest) {
   try {
     const { prompt, context } = await req.json();
 
     if (typeof prompt !== 'string' || prompt.trim() === '') {
+      // BR-010: prompt vacío o inválido no avanza al pipeline LLM
       return NextResponse.json(
-        {
-          success: false,
-          usedFallback: false,
-          error: 'Prompt inválido',
-        },
+        { ok: false, error: 'Prompt inválido' },
         { status: 400 }
       );
     }
 
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) {
+      // BR-011: sin key de servidor no se puede proxear la llamada al proveedor
       return NextResponse.json(
-        {
-          success: false,
-          usedFallback: false,
-          error: 'Servidor no configurado: ANTHROPIC_API_KEY faltante',
-        },
+        { ok: false, error: 'Servidor no configurado: ANTHROPIC_API_KEY faltante' },
         { status: 500 }
       );
     }
 
     const model = process.env.ANTHROPIC_MODEL;
     const provider = new ClaudeAdapter({ apiKey, model });
-    
+
     const sessionContext: SessionContext = {
       turns: context?.turns ?? [],
       previous: context?.previous,
@@ -42,28 +44,26 @@ export async function POST(req: NextRequest) {
     const result = await runV0Pipeline(provider, prompt, sessionContext);
 
     if (result.usedFallback) {
+      // EC-001/EC-002: si falla LLM/red, mantener flujo con patrón fallback válido
       return NextResponse.json({
-        success: false,
+        ok: true,
         trackJson: result.trackJson,
-        usedFallback: true,
-        error: result.error,
+        source: 'fallback' as const,
+        warning: result.error ?? 'LLM no disponible',
       });
     }
 
+    // LLM success — include any delta warnings (BR-005/BR-006)
     return NextResponse.json({
-      success: true,
+      ok: true,
       trackJson: result.trackJson,
-      usedFallback: false,
+      source: 'llm' as const,
       warnings: result.warnings ?? [],
     });
   } catch (error) {
     console.error('[API] generate-pattern error:', error);
     return NextResponse.json(
-      {
-        success: false,
-        usedFallback: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      },
+      { ok: false, error: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }

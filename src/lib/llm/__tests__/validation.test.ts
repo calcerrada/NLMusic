@@ -1,4 +1,5 @@
 // @vitest-environment node
+import { describe, it, expect } from 'vitest'
 import { validatePatternDelta, validateTrackJson } from '@lib/llm/validation'
 
 const STEPS_16 = [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0] as const

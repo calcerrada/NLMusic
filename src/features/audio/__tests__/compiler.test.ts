@@ -216,8 +216,8 @@ describe('compiler — compileToStrudel: TrackJSON → Strudel code', () => {
     })
   })
 
-  describe('solo — filter out non-solo tracks', () => {
-    it('ignores muted tracks if solo is active', () => {
+  describe('BR-001: solo — non-solo tracks stay in stack with gain(0)', () => {
+    it('solo track plays at volume; non-solo track stays in stack with gain(0.00)', () => {
       const pattern: TrackJSON = {
         bpm: 120,
         tracks: [
@@ -244,12 +244,15 @@ describe('compiler — compileToStrudel: TrackJSON → Strudel code', () => {
 
       const code = compileToStrudel(pattern)
 
-      // Only kick should be in output
+      // Both tracks remain in the stack (no Strudel restructure = no click)
       expect(code).toContain('bd')
-      expect(code).not.toContain('sd')
+      expect(code).toContain('sd')
+      // Kick plays at its volume; snare is silenced with gain(0.00)
+      expect(code).toContain('gain(0.90)')
+      expect(code).toContain('gain(0.00)')
     })
 
-    it('respects multiple solo tracks together', () => {
+    it('multiple solo tracks play at volume; non-solo stays in stack with gain(0.00)', () => {
       const pattern: TrackJSON = {
         bpm: 120,
         tracks: [
@@ -285,9 +288,13 @@ describe('compiler — compileToStrudel: TrackJSON → Strudel code', () => {
 
       const code = compileToStrudel(pattern)
 
+      // All 3 tracks in stack — hihat silenced
       expect(code).toContain('bd')
       expect(code).toContain('sd')
-      expect(code).not.toContain('hh')
+      expect(code).toContain('hh')
+      expect(code).toContain('gain(0.90)')
+      expect(code).toContain('gain(0.75)')
+      expect(code).toContain('gain(0.00)')
     })
   })
 

@@ -33,7 +33,7 @@ export async function runV0Pipeline(
     const delta = validatePatternDelta(raw);
 
     // BR-004: aplicar delta sobre patrón previo (incremental, no snapshot)
-    const previous = context.previous ?? context.currentPattern ?? EMPTY_PATTERN;
+    const previous = context.previous ?? EMPTY_PATTERN;
     const { next, warnings } = applyDelta(previous, delta);
 
     return {
