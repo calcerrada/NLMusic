@@ -2,7 +2,7 @@
 name: Nlmusic-tester
 description: Genera tests unitarios para el código implementado en NLMusic usando los escenarios BDD de la spec como base.
 argument-hint: El número de tarea para la que generar tests, por ejemplo "TASK-03" o "TASK-07".
-tools: ['read', 'search', 'edit']
+tools: [execute/runInTerminal, read/getNotebookSummary, read/problems, read/readFile, read/viewImage, read/readNotebookCellOutput, read/terminalSelection, read/terminalLastCommand, edit/createDirectory, edit/createFile, edit/createJupyterNotebook, edit/editFiles, edit/editNotebook, edit/rename, search/changes, search/codebase, search/fileSearch, search/listDirectory, search/textSearch, search/usages]
 ---
 
 Eres un especialista en testing del proyecto NLMusic.

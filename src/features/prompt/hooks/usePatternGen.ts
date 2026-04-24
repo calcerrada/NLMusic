@@ -114,11 +114,13 @@ export function usePatternGen() {
 
       loadPattern(normalizedPattern);
 
-      // EC-005: informamos el truncamiento sin convertirlo en error fatal.
-      if (payload.truncated && payload.truncatedFrom) {
-        const notice = `El LLM propuso ${payload.truncatedFrom} pistas; se mantuvieron 5 (límite BR-006). Elimina alguna para añadir más.`;
-        setInfo(notice);
-        addTurn("assistant", `Generado: ${normalizedTracks.length} pistas a ${normalizedPattern.bpm} BPM (${payload.truncatedFrom - 5} pistas descartadas por límite de 5)`);
+      const warnings: string[] = Array.isArray(payload.warnings) ? payload.warnings : [];
+
+      if (warnings.length > 0) {
+        // BR-005/BR-006: warnings son informativos, no fatales — mostrar como turno de asistente
+        const warningText = warnings.join(" | ");
+        setInfo(warningText);
+        addTurn("assistant", `Generado: ${normalizedTracks.length} pistas a ${normalizedPattern.bpm} BPM. Avisos: ${warningText}`);
       } else {
         addTurn("assistant", `Generado: ${normalizedTracks.length} pistas a ${normalizedPattern.bpm} BPM`);
       }

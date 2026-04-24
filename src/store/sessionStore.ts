@@ -53,6 +53,9 @@ export interface SessionStore {
   toggleSolo: (trackId: string) => void;
   addTurn: (role: "user" | "assistant", content: string) => void;
   loadPattern: (pattern: TrackJSON) => void;
+  // BR-004: acciones incrementales para testing/debug y uso desde applyDelta
+  addTrack: (track: Track) => boolean;
+  updateTrack: (id: string, patch: Partial<Track>) => boolean;
   // BR-003: estado ERROR — mantener estado, informar, ofrecer reintento
   startLoading: () => void;
   setError: (message: string) => void;
@@ -211,6 +214,34 @@ export const useSessionStore = create<SessionStore>()(
               lastError: null,
             };
           }),
+
+        // BR-004/BR-006: añade pista al final; devuelve false si el límite ya fue alcanzado
+        addTrack: (track) => {
+          const { tracks } = get();
+          if (tracks.length >= 5) {
+            return false;
+          }
+          const nextTracks = [...tracks, track];
+          set((state) => ({
+            tracks: nextTracks,
+            currentCode: compileCode(state.bpm, nextTracks),
+          }));
+          return true;
+        },
+
+        // BR-004: modifica pista por id; devuelve false si no existe (BR-005)
+        updateTrack: (id, patch) => {
+          const { tracks } = get();
+          if (!tracks.some((t) => t.id === id)) {
+            return false;
+          }
+          const nextTracks = tracks.map((t) => (t.id === id ? { ...t, ...patch } : t));
+          set((state) => ({
+            tracks: nextTracks,
+            currentCode: compileCode(state.bpm, nextTracks),
+          }));
+          return true;
+        },
 
         // BR-003: submit o retry entra en LOADING sin perder el patrón actual.
         startLoading: () =>

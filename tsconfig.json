@@ -12,7 +12,6 @@
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "types": ["vitest/globals"],
     "skipDefaultLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,

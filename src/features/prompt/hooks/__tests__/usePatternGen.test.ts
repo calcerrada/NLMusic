@@ -108,8 +108,8 @@ describe('usePatternGen — hook for LLM pattern generation', () => {
       expect(turns.some((t) => t.role === 'user' && t.content === 'kick pattern')).toBe(true)
     })
 
-    it('EC-005: surfaces truncation info when API keeps only 5 tracks', async () => {
-      const truncatedResponse: TrackJSON = {
+    it('EC-005/BR-006: surfaces warnings when delta hits track limit', async () => {
+      const limitedResponse: TrackJSON = {
         bpm: 128,
         tracks: Array.from({ length: 5 }, (_, index) => ({
           id: `track-${index + 1}`,
@@ -125,11 +125,10 @@ describe('usePatternGen — hook for LLM pattern generation', () => {
         ok: true,
         json: async () => ({
           success: true,
-          trackJson: truncatedResponse,
-          truncated: true,
-          truncatedFrom: 7,
+          trackJson: limitedResponse,
+          warnings: ['Reemplazo propuso 7 pistas; se mantuvieron 5 (BR-006).'],
         }),
-      } as Response)
+      } as unknown as Response)
 
       const { result } = renderHook(() => usePatternGen())
 
@@ -137,7 +136,7 @@ describe('usePatternGen — hook for LLM pattern generation', () => {
         await result.current.generate('añade 7 pistas')
       })
 
-      expect(result.current.info).toContain('7 pistas')
+      expect(result.current.info).toContain('BR-006')
       expect(useSessionStore.getState().tracks).toHaveLength(5)
       expect(
         useSessionStore
@@ -145,7 +144,7 @@ describe('usePatternGen — hook for LLM pattern generation', () => {
           .turns.some(
             (turn) =>
               turn.role === 'assistant' &&
-              turn.content.includes('2 pistas descartadas por límite de 5')
+              turn.content.includes('Avisos')
           )
       ).toBe(true)
     })
@@ -175,7 +174,7 @@ describe('usePatternGen — hook for LLM pattern generation', () => {
               ],
             },
           }),
-        }
+        } as unknown as Response
       })
 
       const { result } = renderHook(() => usePatternGen())

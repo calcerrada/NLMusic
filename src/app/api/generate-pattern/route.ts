@@ -50,13 +50,11 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // EC-005: propagamos el truncamiento para que la UI pueda informar al usuario.
     return NextResponse.json({
       success: true,
       trackJson: result.trackJson,
       usedFallback: false,
-      truncated: result.truncated ?? false,
-      truncatedFrom: result.truncatedFrom,
+      warnings: result.warnings ?? [],
     });
   } catch (error) {
     console.error('[API] generate-pattern error:', error);

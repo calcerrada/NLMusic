@@ -21,15 +21,55 @@ export const trackJsonSchema = z.object({
 
 export type ParsedTrackJSON = z.infer<typeof trackJsonSchema>;
 
+// BR-004: schema de operaciones delta para actualizaciones incrementales
+const addOperationSchema = z.object({
+  type: z.literal('add'),
+  track: trackSchema,
+});
+
+const updateOperationSchema = z.object({
+  type: z.literal('update'),
+  id: z.string().min(1),
+  patch: trackSchema.omit({ id: true }).partial(),
+});
+
+const removeOperationSchema = z.object({
+  type: z.literal('remove'),
+  id: z.string().min(1),
+});
+
+const replaceOperationSchema = z.object({
+  type: z.literal('replace'),
+  tracks: z.array(trackSchema),
+});
+
+const patternOperationSchema = z.discriminatedUnion('type', [
+  addOperationSchema,
+  updateOperationSchema,
+  removeOperationSchema,
+  replaceOperationSchema,
+]);
+
+export const patternDeltaSchema = z.object({
+  bpm: z.number().int().min(60).max(220).optional(),
+  operations: z.array(patternOperationSchema).min(1),
+});
+
+export type ParsedPatternDelta = z.infer<typeof patternDeltaSchema>;
+
 /**
  * Valida la respuesta cruda del LLM contra el schema del dominio.
- * Cualquier desviación del contrato se trata aguas arriba como error uniforme.
- *
- * @param input - Payload devuelto por el provider LLM.
- * @returns Patrón validado listo para compilar a Strudel.
  * @see BR-002 El LLM debe cumplir el schema definido
  * @see BR-006 Máximo 5 pistas por patrón
  */
 export function validateTrackJson(input: unknown): ParsedTrackJSON {
   return trackJsonSchema.parse(input);
+}
+
+/**
+ * Valida un delta de operaciones devuelto por el LLM.
+ * @see BR-004 Las pistas se crean de forma secuencial
+ */
+export function validatePatternDelta(input: unknown): ParsedPatternDelta {
+  return patternDeltaSchema.parse(input);
 }

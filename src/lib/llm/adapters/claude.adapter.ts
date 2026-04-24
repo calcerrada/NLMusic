@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
-import type { LLMProvider, SessionContext, TrackJSON } from "@lib/types";
+import type { LLMProvider, SessionContext, PatternDelta } from "@lib/types";
+import type { Track } from "@lib/types";
 import { buildSystemPrompt } from "../prompts/systemPrompt";
 
 const DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-4-6";
@@ -18,25 +19,71 @@ function tryParseJson(raw: string): unknown {
     const first = trimmed.indexOf("{");
     const last = trimmed.lastIndexOf("}");
     if (first >= 0 && last > first) {
-      const sliced = trimmed.slice(first, last + 1);
-      return JSON.parse(sliced);
+      return JSON.parse(trimmed.slice(first, last + 1));
     }
     throw new Error("Claude did not return valid JSON.");
   }
 }
 
-function buildUserPrompt(prompt: string, context: SessionContext): string {
-  const payload = {
-    prompt,
-    context
-  };
+/**
+ * Convierte el formato viejo { bpm, tracks } al nuevo { operations: [replace] }.
+ * Permite desplegar sin romper si el LLM no sigue las nuevas instrucciones.
+ */
+function normalizeToDelta(raw: unknown): PatternDelta {
+  if (typeof raw !== "object" || raw === null) {
+    throw new Error("LLM returned non-object response.");
+  }
 
-  return JSON.stringify(payload);
+  const obj = raw as Record<string, unknown>;
+
+  // Ya tiene el formato nuevo con operations
+  if (Array.isArray(obj.operations)) {
+    return raw as PatternDelta;
+  }
+
+  // Tolerancia: formato viejo { bpm, tracks } → envolver como replace
+  if (Array.isArray(obj.tracks)) {
+    return {
+      bpm: typeof obj.bpm === "number" ? obj.bpm : undefined,
+      operations: [{ type: "replace", tracks: obj.tracks as Track[] }],
+    };
+  }
+
+  throw new Error("LLM returned unexpected format (no 'operations' or 'tracks').");
+}
+
+function buildUserPrompt(prompt: string, context: SessionContext): string {
+  const currentTracks = context.previous?.tracks ?? context.currentPattern?.tracks ?? [];
+  const currentBpm = context.previous?.bpm ?? context.currentPattern?.bpm;
+
+  const trackLines =
+    currentTracks.length > 0
+      ? currentTracks.map(
+          (t) => `  - id: "${t.id}", name: "${t.name}", sample: "${t.sample ?? t.tag ?? ""}", volume: ${t.volume}`
+        )
+      : ["  (no tracks yet — use replace to create a fresh pattern)"];
+
+  const lines = [
+    `User request: ${prompt}`,
+    "",
+    "Current pattern state:",
+    currentBpm ? `  BPM: ${currentBpm}` : "  BPM: (none)",
+    "  Tracks:",
+    ...trackLines,
+  ];
+
+  if (context.turns.length > 0) {
+    lines.push("", "Recent conversation:");
+    context.turns.slice(-4).forEach((t) => {
+      lines.push(`  ${t.role}: ${t.content}`);
+    });
+  }
+
+  return lines.join("\n");
 }
 
 export class ClaudeAdapter implements LLMProvider {
   private readonly client: Anthropic;
-
   private readonly model: string;
 
   constructor(options: ClaudeAdapterOptions) {
@@ -44,13 +91,14 @@ export class ClaudeAdapter implements LLMProvider {
     this.model = options.model ?? DEFAULT_ANTHROPIC_MODEL;
   }
 
-  async generatePattern(prompt: string, context: SessionContext): Promise<TrackJSON> {
+  // BR-004: devuelve PatternDelta en lugar de TrackJSON completo
+  async generatePattern(prompt: string, context: SessionContext): Promise<PatternDelta> {
     const response = await this.client.messages.create({
       model: this.model,
       max_tokens: 1400,
       temperature: 0.3,
       system: buildSystemPrompt(),
-      messages: [{ role: "user", content: buildUserPrompt(prompt, context) }]
+      messages: [{ role: "user", content: buildUserPrompt(prompt, context) }],
     });
 
     const textBlock = response.content.find((c) => c.type === "text");
@@ -58,6 +106,7 @@ export class ClaudeAdapter implements LLMProvider {
       throw new Error("Claude response has no text block.");
     }
 
-    return tryParseJson(textBlock.text) as TrackJSON;
+    const parsed = tryParseJson(textBlock.text);
+    return normalizeToDelta(parsed);
   }
 }

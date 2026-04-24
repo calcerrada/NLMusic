@@ -1,27 +1,25 @@
 import type { LLMProvider, SessionContext, TrackJSON } from "@lib/types";
 import { compileToStrudel } from "@features/audio";
-import { validateTrackJson } from "./validation";
+import { validatePatternDelta } from "./validation";
+import { applyDelta } from "./applyDelta";
 import { fallbackPattern } from "./fallbackPattern";
 
 export interface PipelineResult {
   trackJson: TrackJSON;
   usedFallback: boolean;
-  truncated?: boolean;       // BR-006: LLM returned > 5 tracks, we sliced
-  truncatedFrom?: number;    // original track count before truncation
+  warnings?: string[];
   error?: string;
 }
 
+const EMPTY_PATTERN: TrackJSON = { bpm: 138, tracks: [] };
+
 /**
- * Ejecuta el pipeline v0 de generación musical desde el provider hasta TrackJSON.
- * Trunca respuestas útiles con exceso de pistas antes de validar para no perderlas.
+ * Ejecuta el pipeline v1: adapter devuelve PatternDelta → validar → aplicar
+ * sobre el patrón actual → compilar Strudel. Fallback solo ante errores no recuperables.
  *
- * @param provider - Adaptador LLM responsable de generar el patrón bruto.
- * @param prompt - Intención musical del usuario.
- * @param context - Contexto de sesión actual enviado al LLM.
- * @returns Resultado compilado, con fallback solo ante errores no recuperables.
- * @see BR-003 Los errores se manejan de forma uniforme
- * @see BR-006 Máximo 5 pistas, con truncamiento informado
- * @see EC-005 Exceso de pistas del LLM se conserva truncando en vez de descartar
+ * @see BR-001 El audio no se interrumpe — Strudel actualiza en el siguiente ciclo
+ * @see BR-003 Errores → fallback uniforme, informar, ofrecer reintento
+ * @see BR-004 Las pistas se crean de forma secuencial
  */
 export async function runV0Pipeline(
   provider: LLMProvider,
@@ -31,46 +29,31 @@ export async function runV0Pipeline(
   try {
     const raw = await provider.generatePattern(prompt, context);
 
-    // BR-006 / EC-005: preservamos la respuesta útil truncando a 5 pistas.
-    const candidate =
-      typeof raw === "object" && raw !== null
-        ? ({ ...raw } as Record<string, unknown>)
-        : raw;
+    // BR-002: validar contrato de operaciones
+    const delta = validatePatternDelta(raw);
 
-    let truncated = false;
-    let truncatedFrom: number | undefined;
+    // BR-004: aplicar delta sobre patrón previo (incremental, no snapshot)
+    const previous = context.previous ?? context.currentPattern ?? EMPTY_PATTERN;
+    const { next, warnings } = applyDelta(previous, delta);
 
-    if (
-      typeof candidate === "object" &&
-      candidate !== null &&
-      Array.isArray(candidate.tracks) &&
-      candidate.tracks.length > 5
-    ) {
-      truncated = true;
-      truncatedFrom = candidate.tracks.length;
-      candidate.tracks = candidate.tracks.slice(0, 5);
-    }
-
-    // BR-003: los errores restantes de red/schema caen al fallback uniforme.
-    const parsed = validateTrackJson(candidate);
     return {
       trackJson: {
-        ...parsed,
-        strudelCode: compileToStrudel(parsed)
+        ...next,
+        strudelCode: compileToStrudel(next),
       },
       usedFallback: false,
-      truncated,
-      truncatedFrom,
+      warnings: warnings.length > 0 ? warnings : undefined,
     };
   } catch (error) {
+    // BR-003: cualquier error → fallback uniforme
     const fallback = fallbackPattern();
     return {
       trackJson: {
         ...fallback,
-        strudelCode: compileToStrudel(fallback)
+        strudelCode: compileToStrudel(fallback),
       },
       usedFallback: true,
-      error: error instanceof Error ? error.message : "Unknown generation error"
+      error: error instanceof Error ? error.message : "Unknown generation error",
     };
   }
 }

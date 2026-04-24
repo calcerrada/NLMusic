@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { validateTrackJson } from '@lib/llm/validation'
+import { validatePatternDelta, validateTrackJson } from '@lib/llm/validation'
 
 const STEPS_16 = [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0] as const
 
@@ -58,5 +58,47 @@ describe('validateTrackJson — alias resolution + schema smoke test', () => {
 
   it('throws on non-object input', () => {
     expect(() => validateTrackJson('invalid-string')).toThrow()
+  })
+})
+
+describe('validatePatternDelta — BR-004 incremental operations', () => {
+  it('accepts add/update/remove/replace operations', () => {
+    const result = validatePatternDelta({
+      bpm: 128,
+      operations: [
+        { type: 'add', track: { ...minimalTrack, id: 'hihat-1', name: 'Hi-Hat' } },
+        { type: 'update', id: 'kick-1', patch: { volume: 0.95 } },
+        { type: 'remove', id: 'snare-1' },
+        { type: 'replace', tracks: [{ ...minimalTrack, id: 'new-kick-1' }] },
+      ],
+    })
+
+    expect(result.bpm).toBe(128)
+    expect(result.operations).toHaveLength(4)
+  })
+
+  it('throws when operations is empty', () => {
+    expect(() => validatePatternDelta({ bpm: 128, operations: [] })).toThrow()
+  })
+
+  it('throws when update patch contains invalid value', () => {
+    expect(() =>
+      validatePatternDelta({
+        operations: [{ type: 'update', id: 'kick-1', patch: { volume: 2 } }],
+      }),
+    ).toThrow()
+  })
+
+  it('throws when add track has invalid steps length', () => {
+    expect(() =>
+      validatePatternDelta({
+        operations: [
+          {
+            type: 'add',
+            track: { ...minimalTrack, id: 'bad-steps', steps: [1, 0, 0, 1] },
+          },
+        ],
+      }),
+    ).toThrow()
   })
 })
