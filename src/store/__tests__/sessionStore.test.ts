@@ -463,26 +463,163 @@ describe('sessionStore — Zustand store with business logic', () => {
     })
   })
 
-  describe('EC-007: delete last track while PLAYING → IDLE', () => {
-    it('setTracks([]) transitions store to idle and stops playback', () => {
-      const track: Track = {
-        id: 'kick-1',
-        name: 'Kick',
-        steps: Array(16).fill(0) as (0 | 1)[],
-        volume: 0.8,
-        muted: false,
-        solo: false,
-      }
-      useSessionStore.getState().setTracks([track])
-      useSessionStore.getState().setPlaying(true)
+  describe('BR-007 / EC-007 / EC-008 — deleteTrack', () => {
+    const makeTrack = (id: string): Track => ({
+      id,
+      name: id,
+      steps: Array(16).fill(0) as (0 | 1)[],
+      volume: 0.8,
+      muted: false,
+      solo: false,
+    })
 
-      // Simulate delete last track
-      useSessionStore.getState().setTracks([])
+    it('EC-007: deleteTrack de última pista en PLAYING → IDLE', () => {
+      useSessionStore.setState({
+        tracks: [makeTrack('kick-1')],
+        isPlaying: true,
+        uiState: 'playing',
+      })
+
+      useSessionStore.getState().deleteTrack('kick-1')
 
       const state = useSessionStore.getState()
       expect(state.tracks).toHaveLength(0)
       expect(state.isPlaying).toBe(false)
       expect(state.uiState).toBe('idle')
+    })
+
+    it('EC-008: deleteTrack de última pista en PAUSED → IDLE', () => {
+      useSessionStore.setState({
+        tracks: [makeTrack('kick-1')],
+        isPlaying: false,
+        uiState: 'paused',
+      })
+
+      useSessionStore.getState().deleteTrack('kick-1')
+
+      const state = useSessionStore.getState()
+      expect(state.tracks).toHaveLength(0)
+      expect(state.isPlaying).toBe(false)
+      expect(state.uiState).toBe('idle')
+    })
+
+    it('BR-001: deleteTrack con pistas restantes mantiene estado PLAYING', () => {
+      useSessionStore.setState({
+        tracks: [makeTrack('kick-1'), makeTrack('snare-1')],
+        isPlaying: true,
+        uiState: 'playing',
+      })
+
+      useSessionStore.getState().deleteTrack('snare-1')
+
+      const state = useSessionStore.getState()
+      expect(state.tracks).toHaveLength(1)
+      expect(state.tracks[0].id).toBe('kick-1')
+      expect(state.isPlaying).toBe(true)
+      expect(state.uiState).toBe('playing')
+    })
+
+    it('BR-001: deleteTrack con pistas restantes en PAUSED mantiene PAUSED', () => {
+      useSessionStore.setState({
+        tracks: [makeTrack('kick-1'), makeTrack('snare-1')],
+        isPlaying: false,
+        uiState: 'paused',
+      })
+
+      useSessionStore.getState().deleteTrack('kick-1')
+
+      const state = useSessionStore.getState()
+      expect(state.tracks).toHaveLength(1)
+      expect(state.tracks[0].id).toBe('snare-1')
+      expect(state.isPlaying).toBe(false)
+      expect(state.uiState).toBe('paused')
+    })
+
+    it('BR-007: deleteTrack elimina solo la pista indicada por id', () => {
+      useSessionStore.setState({
+        tracks: [makeTrack('kick-1'), makeTrack('snare-1'), makeTrack('hh-1')],
+        isPlaying: false,
+        uiState: 'paused',
+      })
+
+      useSessionStore.getState().deleteTrack('snare-1')
+
+      const ids = useSessionStore.getState().tracks.map((t) => t.id)
+      expect(ids).toEqual(['kick-1', 'hh-1'])
+    })
+
+    it('BR-001: deleteTrack regenera el código de Strudel para las pistas restantes', () => {
+      useSessionStore.setState({
+        tracks: [makeTrack('kick-1'), makeTrack('snare-1')],
+        isPlaying: true,
+      })
+
+      useSessionStore.getState().deleteTrack('kick-1')
+
+      const codeWithSnareOnly = useSessionStore.getState().currentCode
+      expect(codeWithSnareOnly).toBeDefined()
+      expect(codeWithSnareOnly.length).toBeGreaterThan(0)
+    })
+
+    it('BR-007: deleteTrack es no destructivo para pistas no eliminadas', () => {
+      const tracks = [makeTrack('track-1'), makeTrack('track-2'), makeTrack('track-3')]
+      useSessionStore.setState({ tracks })
+
+      useSessionStore.getState().deleteTrack('track-1')
+
+      const ids = useSessionStore.getState().tracks.map((t) => t.id)
+      expect(ids).toEqual(['track-2', 'track-3'])
+    })
+
+    it('deleteTrack de pista no existente debe no-op', () => {
+      useSessionStore.setState({
+        tracks: [makeTrack('kick-1'), makeTrack('snare-1')],
+      })
+
+      useSessionStore.getState().deleteTrack('nonexistent-id')
+      const ids = useSessionStore.getState().tracks.map((t) => t.id)
+      expect(ids).toEqual(['kick-1', 'snare-1'])
+    })
+
+    it('deleteTrack con múltiples pistas mantiene el orden de las restantes', () => {
+      useSessionStore.setState({
+        tracks: [
+          makeTrack('track-1'),
+          makeTrack('track-2'),
+          makeTrack('track-3'),
+          makeTrack('track-4'),
+        ],
+        isPlaying: true,
+      })
+
+      useSessionStore.getState().deleteTrack('track-2')
+
+      const ids = useSessionStore.getState().tracks.map((t) => t.id)
+      expect(ids).toEqual(['track-1', 'track-3', 'track-4'])
+    })
+
+    it('EC-007/EC-008: después de eliminar última pista permite cargar un patrón nuevo', () => {
+      useSessionStore.setState({
+        tracks: [makeTrack('kick-1')],
+        isPlaying: true,
+        uiState: 'playing',
+      })
+
+      useSessionStore.getState().deleteTrack('kick-1')
+
+      let state = useSessionStore.getState()
+      expect(state.uiState).toBe('idle')
+      expect(state.tracks).toHaveLength(0)
+
+      const newPattern: TrackJSON = {
+        bpm: 140,
+        tracks: [makeTrack('new-kick')],
+      }
+
+      useSessionStore.getState().loadPattern(newPattern)
+      state = useSessionStore.getState()
+      expect(state.tracks).toHaveLength(1)
+      expect(state.tracks[0].id).toBe('new-kick')
     })
   })
 

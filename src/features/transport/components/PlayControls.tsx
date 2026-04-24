@@ -29,6 +29,17 @@ export function PlayControls({ strudel, disabled = false, disabledReason }: Play
   const currentCode = useSessionStore((s) => s.currentCode);
   const [stopFlash, setStopFlash] = useState(false);
   const syncedCode = useRef('');
+  const prevIsPlayingRef = useRef(isPlaying);
+
+  // EC-007/EC-008: detener audio cuando isPlaying cae a false externamente
+  // (ej. se elimina la última pista) — BR-001 safe porque hush() es idempotente
+  useEffect(() => {
+    if (prevIsPlayingRef.current && !isPlaying) {
+      stop();
+      syncedCode.current = '';
+    }
+    prevIsPlayingRef.current = isPlaying;
+  }, [isPlaying, stop]);
 
   useEffect(() => {
     if (!isPlaying || !isReady || !currentCode || syncedCode.current === currentCode) {

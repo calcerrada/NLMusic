@@ -28,7 +28,7 @@ export function BpmControl({ disabled = false, disabledReason }: BpmControlProps
         type="button"
         title={disabledReason}
         disabled={disabled}
-        className="h-[22px] w-[22px] rounded-[4px] border border-[var(--border)] text-[var(--text)] transition-colors hover:border-[var(--border-active)] hover:text-[var(--cyan)]"
+        className="h-[22px] w-[22px] rounded-[4px] border border-[var(--border)] bg-[var(--surface2)] text-[var(--text)] transition-colors hover:border-[var(--border-active)] hover:text-[var(--cyan)]"
         onClick={() => setBpm(bpm - 1)}
       >
         <Minus size={14} strokeWidth={2} className="text-current" />
@@ -38,7 +38,7 @@ export function BpmControl({ disabled = false, disabledReason }: BpmControlProps
         type="button"
         title={disabledReason}
         disabled={disabled}
-        className="h-[22px] w-[22px] rounded-[4px] border border-[var(--border)] text-[var(--text)] transition-colors hover:border-[var(--border-active)] hover:text-[var(--cyan)]"
+        className="h-[22px] w-[22px] rounded-[4px] border border-[var(--border)] bg-[var(--surface2)] text-[var(--text)] transition-colors hover:border-[var(--border-active)] hover:text-[var(--cyan)]"
         onClick={() => setBpm(bpm + 1)}
       >
         <Plus size={14} strokeWidth={2} className="text-current" />

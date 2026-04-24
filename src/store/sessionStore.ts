@@ -56,6 +56,8 @@ export interface SessionStore {
   // BR-004: acciones incrementales para testing/debug y uso desde applyDelta
   addTrack: (track: Track) => boolean;
   updateTrack: (id: string, patch: Partial<Track>) => boolean;
+  // BR-007: eliminar pista — destructivo, irreversible, sin confirmación
+  deleteTrack: (id: string) => void;
   // BR-003: estado ERROR — mantener estado, informar, ofrecer reintento
   startLoading: () => void;
   setError: (message: string) => void;
@@ -64,6 +66,15 @@ export interface SessionStore {
   retry: () => string | null;
 }
 
+/**
+ * Compila el estado actual del secuenciador a código Strudel ejecutable.
+ * Se usa tras cambios locales (toggle, volumen, delete) sin invocar al LLM.
+ *
+ * @param bpm - Tempo en BPM, limitado a 60-220 por el store.
+ * @param tracks - Pistas activas de la sesión (máximo 5 por BR-006).
+ * @returns Código Strudel listo para evaluación incremental.
+ * @see BR-001 La actualización de código no debe cortar el audio existente
+ */
 function compileCode(bpm: number, tracks: Track[]): string {
   return compileToStrudel({ bpm, tracks });
 }
@@ -242,6 +253,28 @@ export const useSessionStore = create<SessionStore>()(
           }));
           return true;
         },
+
+        /**
+         * Elimina una pista por id de forma destructiva e irreversible.
+         * Si era la última pista, fuerza transición a IDLE al dejar isPlaying en false.
+         *
+         * @see BR-007 Eliminar sin confirmación y sin deshacer
+         * @see BR-001 Si quedan pistas, solo recompila código; el audio continúa en siguiente ciclo
+         * @see EC-007 Última pista en PLAYING -> IDLE
+         * @see EC-008 Última pista en PAUSED -> IDLE
+         */
+        deleteTrack: (id) =>
+          set((state) => {
+            const nextTracks = state.tracks.filter((t) => t.id !== id);
+            // EC-007/EC-008: al quedar 0 pistas, el transporte debe caer a IDLE.
+            const nextIsPlaying = nextTracks.length > 0 ? state.isPlaying : false;
+            return {
+              tracks: nextTracks,
+              currentCode: compileCode(state.bpm, nextTracks),
+              isPlaying: nextIsPlaying,
+              uiState: deriveUiState(nextTracks, nextIsPlaying),
+            };
+          }),
 
         // BR-003: submit o retry entra en LOADING sin perder el patrón actual.
         startLoading: () =>
