@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { compileToStrudel } from '@features/audio/compiler'
+import { compileToStrudel, parseStrudelToTrackJson } from '@features/audio/compiler'
 import type { TrackJSON } from '@lib/types'
 
 describe('compiler — compileToStrudel: TrackJSON → Strudel code', () => {
@@ -529,6 +529,50 @@ describe('compiler — compileToStrudel: TrackJSON → Strudel code', () => {
       expect(code).toContain('gain(0.90)')
       expect(code).toContain('gain(0.75)')
       expect(code).toContain('gain(0.55)')
+    })
+  })
+
+  describe('BR-009: parseStrudelToTrackJson — supported reverse sync', () => {
+    it('parses compiler output back into a 16-step TrackJSON', () => {
+      const pattern: TrackJSON = {
+        bpm: 132,
+        tracks: [
+          {
+            id: 'kick-1',
+            name: 'Kick',
+            tag: 'kick',
+            steps: [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0],
+            volume: 0.9,
+            muted: false,
+            solo: false,
+          },
+          {
+            id: 'snare-1',
+            name: 'Snare',
+            tag: 'snare',
+            steps: [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
+            volume: 0.7,
+            muted: false,
+            solo: false,
+          },
+        ],
+      }
+
+      const code = compileToStrudel(pattern)
+      const parsed = parseStrudelToTrackJson(code, pattern.tracks)
+
+      expect(parsed).not.toBeNull()
+      expect(parsed?.bpm).toBe(132)
+      expect(parsed?.tracks).toHaveLength(2)
+      expect(parsed?.tracks[0].steps).toEqual(pattern.tracks[0].steps)
+      expect(parsed?.tracks[0].id).toBe('kick-1')
+      expect(parsed?.tracks[1].id).toBe('snare-1')
+    })
+
+    it('returns null when code cannot map back to the 16-step grid', () => {
+      const parsed = parseStrudelToTrackJson('stack(s("bd ~ hh").gain(0.80)).slow(4).cpm(132.00)')
+
+      expect(parsed).toBeNull()
     })
   })
 })

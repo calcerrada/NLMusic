@@ -22,7 +22,9 @@ TASK-06 — Coherencia compiler + contrato API
 TASK-07 — Eliminar pista desde UI
     ↓ transiciones IDLE completas
 TASK-08 — StrudelCodePanel editable
-    ↓ UI estable
+    ↓ el prompt debe respetar la fuente de verdad en modo código
+TASK-11 — Contexto LLM coherente en modo código
+    ↓ cierre de integración editor ↔ prompts
 TASK-09 — Tercera pestaña config/guía
     ↓ i18n requiere UI terminada
 TASK-10 — Multiidioma UI
@@ -189,6 +191,24 @@ Revisión específica (Sección 10):
 Prueba manual sugerida:
 Cambiar a EN, recargar la página, verificar que el idioma persiste.
 Volver a ES y verificar que todos los textos están en español.
+
+---
+
+### TASK-11 — Contexto LLM coherente en modo código
+
+Revisión específica (BR-003, BR-004, BR-005, BR-009):
+- [ ] `SessionContext` distingue explícitamente grid mode vs code mode
+- [ ] `usePatternGen` no envía `previous.tracks` obsoletos cuando `isCodeManuallyEdited === true`
+- [ ] El adapter/prompt informa al LLM de que `strudelCode` es la fuente de verdad en modo código
+- [ ] El pipeline no aplica `add/update/remove` sobre un patrón previo no fiable en modo código
+- [ ] `replace` sigue funcionando como operación segura cuando el contexto solo tiene `strudelCode`
+- [ ] El flujo normal en grid mode no cambia
+
+Prueba manual sugerida:
+Editar el código Strudel hasta entrar en modo código y luego enviar un prompt como
+"hazlo más lento" o "añade un hi-hat". Verificar que la request no recicla pistas
+obsoletas como fuente de verdad y que el sistema no aplica deltas incrementales
+sobre un patrón que ya no coincide con el audio actual.
 
 ---
 

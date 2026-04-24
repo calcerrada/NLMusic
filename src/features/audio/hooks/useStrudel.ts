@@ -8,7 +8,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
  * si es string, la app no puede reproducir audio (EC-010).
  */
 export interface UseStrudelResult {
-  play: (code: string) => Promise<void>;
+  play: (code: string, autoplay?: boolean) => Promise<void>;
   stop: () => void;
   isReady: boolean;
   initError: string | null;
@@ -17,7 +17,7 @@ export interface UseStrudelResult {
 // Referencias capturadas del import dinámico de @strudel/web.
 // Son module-level para sobrevivir re-renders sin reinicializar Strudel.
 let _hush: (() => void) | null = null;
-let _evaluate: ((code: string) => Promise<unknown>) | null = null;
+let _evaluate: ((code: string, autoplay?: boolean) => Promise<unknown>) | null = null;
 
 /**
  * Inicializa el motor de audio Strudel y expone play/stop.
@@ -57,7 +57,7 @@ export function useStrudel(): UseStrudelResult {
         // hush & evaluate are runtime exports not in the .d.ts types
         const runtime = mod as unknown as {
           hush?: () => void;
-          evaluate?: (code: string) => Promise<unknown>;
+          evaluate?: (code: string, autoplay?: boolean) => Promise<unknown>;
         };
         _hush = runtime.hush ?? null;
         _evaluate = runtime.evaluate ?? null;
@@ -66,7 +66,7 @@ export function useStrudel(): UseStrudelResult {
         const g = globalThis as Record<string, unknown>;
         if (!_hush && typeof g.hush === 'function') _hush = g.hush as () => void;
         if (!_evaluate && typeof g.evaluate === 'function')
-          _evaluate = g.evaluate as (code: string) => Promise<unknown>;
+          _evaluate = g.evaluate as (code: string, autoplay?: boolean) => Promise<unknown>;
 
         console.log('[Strudel] ready — hush:', !!_hush, 'evaluate:', !!_evaluate);
         initErrorRef.current = null;
@@ -93,7 +93,7 @@ export function useStrudel(): UseStrudelResult {
       });
   }, []);
 
-  const play = useCallback(async (code: string) => {
+  const play = useCallback(async (code: string, autoplay = true) => {
     // EC-010: distingue "init falló" de "todavía cargando" para que el
     // consumidor pueda reaccionar de forma diferente en cada caso
     if (initErrorRef.current !== null) {
@@ -103,7 +103,7 @@ export function useStrudel(): UseStrudelResult {
     if (!_evaluate) {
       throw new Error('Strudel no inicializado todavía');
     }
-    await _evaluate(code);
+    await _evaluate(code, autoplay);
   }, []);
 
   const stop = useCallback(() => {

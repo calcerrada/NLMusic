@@ -22,6 +22,7 @@ describe('TrackZone — TASK-03 counter visibility', () => {
       activeTab: 'sequencer',
       currentCode: 'stack(...)',
       turns: [],
+      isCodeManuallyEdited: false,
     })
   })
 
@@ -49,5 +50,29 @@ describe('TrackZone — TASK-03 counter visibility', () => {
     const counter = screen.getByText('Pistas: 5 / 5')
     expect(counter).toBeInTheDocument()
     expect(counter).toHaveStyle({ color: 'var(--amber)' })
+  })
+
+  it('TASK-08: shows code mode banner and dims the grid when code was edited manually', () => {
+    useSessionStore.setState({
+      tracks: [
+        {
+          id: 'track-1',
+          name: 'Track 1',
+          tag: 'kick',
+          steps: Array(16).fill(0) as (0 | 1)[],
+          volume: 0.8,
+          muted: false,
+          solo: false,
+        },
+      ],
+      isCodeManuallyEdited: true,
+    })
+
+    const { container } = render(<TrackZone />)
+
+    expect(
+      screen.getByText('Editado manualmente — el grid puede no reflejar el código actual')
+    ).toBeInTheDocument()
+    expect(container.querySelector('.transition-opacity')).toHaveStyle({ opacity: '0.5' })
   })
 })

@@ -13,6 +13,7 @@ import { TrackCard } from './TrackCard';
  */
 export function TrackZone() {
   const tracks = useSessionStore((s) => s.tracks);
+  const isCodeManuallyEdited = useSessionStore((s) => s.isCodeManuallyEdited);
   const { step } = useBeatClock();
   const atLimit = tracks.length >= 5;
 
@@ -47,7 +48,19 @@ export function TrackZone() {
           Pistas: {tracks.length} / 5
         </span>
       </div>
-      <div className="flex flex-1 flex-col gap-[10px] px-5 pb-5">
+      {/* BR-009: "modo código" — grid may not reflect manually edited Strudel code */}
+      {isCodeManuallyEdited && (
+        <div className="mx-5 mb-1 rounded-[6px] border border-[rgba(180,130,255,0.25)] bg-[rgba(180,130,255,0.06)] px-3 py-1.5">
+          <p className="text-[10px] text-[rgba(180,130,255,0.7)] uppercase tracking-[0.08em]">
+            Editado manualmente — el grid puede no reflejar el código actual
+          </p>
+        </div>
+      )}
+
+      <div
+        className="flex flex-1 flex-col gap-[10px] px-5 pb-5 transition-opacity"
+        style={{ opacity: isCodeManuallyEdited ? 0.5 : 1 }}
+      >
         {tracks.map((track) => (
           <TrackCard key={track.id} track={track} activeStep={step} />
         ))}

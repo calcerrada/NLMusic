@@ -81,7 +81,7 @@ export default function Home() {
         </div>
 
         <section className="min-h-0 flex-1 overflow-hidden">
-          {activeTab === 'sequencer' ? <TrackZone /> : <StrudelCodePanel />}
+          {activeTab === 'sequencer' ? <TrackZone /> : <StrudelCodePanel strudel={strudel} />}
         </section>
       </div>
 

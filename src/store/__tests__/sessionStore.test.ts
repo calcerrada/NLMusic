@@ -57,6 +57,69 @@ describe('sessionStore — Zustand store with business logic', () => {
     })
   })
 
+  describe('BR-009: syncCodePattern', () => {
+    it('syncs parsed code into bpm/tracks without forcing PLAYING from PAUSED', () => {
+      const parsedPattern: TrackJSON = {
+        bpm: 142,
+        tracks: [
+          {
+            id: 'kick-1',
+            name: 'Kick',
+            tag: 'kick',
+            steps: [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0],
+            volume: 0.8,
+            muted: false,
+            solo: false,
+          },
+        ],
+      }
+
+      useSessionStore.setState({
+        tracks: [parsedPattern.tracks[0]],
+        bpm: 138,
+        isPlaying: false,
+        uiState: 'paused',
+        isCodeManuallyEdited: true,
+      })
+
+      useSessionStore.getState().syncCodePattern(parsedPattern, 'stack(...new code...)')
+
+      const state = useSessionStore.getState()
+      expect(state.bpm).toBe(142)
+      expect(state.currentCode).toBe('stack(...new code...)')
+      expect(state.isPlaying).toBe(false)
+      expect(state.uiState).toBe('paused')
+      expect(state.isCodeManuallyEdited).toBe(false)
+    })
+
+    it('returns from code mode to grid mode when a sequencer edit recompiles the code', () => {
+      const track: Track = {
+        id: 'kick-1',
+        name: 'Kick',
+        tag: 'kick',
+        steps: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        volume: 0.8,
+        muted: false,
+        solo: false,
+      }
+
+      useSessionStore.setState({
+        tracks: [track],
+        bpm: 138,
+        currentCode: 'note("c a f e")',
+        isCodeManuallyEdited: true,
+      })
+
+      useSessionStore.getState().toggleStep('kick-1', 0)
+
+      const state = useSessionStore.getState()
+      expect(state.tracks[0].steps[0]).toBe(1)
+      expect(state.isCodeManuallyEdited).toBe(false)
+      expect(state.currentCode).not.toBe('note("c a f e")')
+      expect(state.currentCode).toContain('bd')
+    })
+  })
+
   describe('BR-006: maximum 5 tracks enforced at store level', () => {
     it('should allow validation to be called by loadPattern with <= 5 tracks', () => {
       const pattern: TrackJSON = {

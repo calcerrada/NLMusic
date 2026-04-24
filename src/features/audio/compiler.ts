@@ -1,3 +1,5 @@
+import type { Track, TrackJSON } from '@lib/types';
+
 interface CompilableTrack {
   sample?: string;
   tag?: string;
@@ -10,6 +12,162 @@ interface CompilableTrack {
 interface CompilableTrackJson {
   bpm: number;
   tracks: CompilableTrack[];
+}
+
+const SAMPLE_TO_TAG: Record<string, string> = {
+  bd: 'kick',
+  sd: 'snare',
+  hh: 'hihat',
+  cp: 'clap',
+  perc: 'perc',
+};
+
+function inferTagFromSample(sample: string): string {
+  return SAMPLE_TO_TAG[sample] ?? 'perc';
+}
+
+function inferNameFromSample(sample: string, tag: string, index: number): string {
+  if (sample === 'bd') return 'Kick';
+  if (sample === 'sd') return 'Snare';
+  if (sample === 'hh') return 'Hi-Hat';
+  if (sample === 'cp') return 'Clap';
+  if (sample === 'perc') return 'Perc';
+  return `${tag.charAt(0).toUpperCase()}${tag.slice(1)} ${index + 1}`;
+}
+
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function splitTopLevelArgs(source: string): string[] {
+  const parts: string[] = [];
+  let current = '';
+  let depth = 0;
+  let inString = false;
+  let quoteChar = '';
+  let escaped = false;
+
+  for (const char of source) {
+    current += char;
+
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+
+    if (char === '\\') {
+      escaped = true;
+      continue;
+    }
+
+    if (inString) {
+      if (char === quoteChar) {
+        inString = false;
+        quoteChar = '';
+      }
+      continue;
+    }
+
+    if (char === '"' || char === "'") {
+      inString = true;
+      quoteChar = char;
+      continue;
+    }
+
+    if (char === '(') {
+      depth += 1;
+      continue;
+    }
+
+    if (char === ')') {
+      depth -= 1;
+      continue;
+    }
+
+    if (char === ',' && depth === 0) {
+      parts.push(current.slice(0, -1).trim());
+      current = '';
+    }
+  }
+
+  if (current.trim()) {
+    parts.push(current.trim());
+  }
+
+  return parts;
+}
+
+function parseTrackExpression(source: string, previousTrack: Track | undefined, index: number): Track | null {
+  const match = source.match(/^s\(\s*"((?:[^"\\]|\\.)*)"\s*\)\.gain\(\s*(-?\d+(?:\.\d+)?)\s*\)$/);
+  if (!match) {
+    return null;
+  }
+
+  const pattern = match[1];
+  const gain = Number(match[2]);
+  const tokens = pattern.trim().split(/\s+/).filter(Boolean);
+  if (tokens.length !== 16) {
+    return null;
+  }
+
+  const soundingTokens = tokens.filter((token) => token !== '~');
+  const distinctTokens = [...new Set(soundingTokens)];
+  if (distinctTokens.length > 1) {
+    return null;
+  }
+
+  const sample = distinctTokens[0] ?? previousTrack?.sample ?? previousTrack?.tag ?? 'perc';
+  const tag = inferTagFromSample(sample);
+  const previousSample = previousTrack?.sample ?? resolveSample(previousTrack ?? { tag: previousTrack?.tag, steps: [], volume: 0, muted: false, solo: false });
+  const shouldReuseName = previousTrack && previousSample === sample;
+
+  return {
+    id: previousTrack?.id ?? `${tag}-${index + 1}`,
+    name: shouldReuseName ? previousTrack.name : inferNameFromSample(sample, tag, index),
+    tag,
+    sample: SAMPLE_TO_TAG[sample] ? undefined : sample,
+    steps: tokens.map((token) => (token === '~' ? 0 : 1)) as (0 | 1)[],
+    volume: Math.max(0, Math.min(1, Number.isFinite(gain) ? gain : 0)),
+    muted: gain <= 0,
+    solo: false,
+  };
+}
+
+/**
+ * Best-effort reverse parser for the Strudel subset emitted by compileToStrudel.
+ * Returns null when the code cannot be represented in the 16-step grid.
+ *
+ * @see BR-009 Grid/editor sync when code stays within the supported subset
+ */
+export function parseStrudelToTrackJson(code: string, previousTracks: Track[] = []): TrackJSON | null {
+  const trimmed = code.trim();
+  const shellMatch = trimmed.match(/^(.*?)\.slow\(\s*4\s*\)\.cpm\(\s*(-?\d+(?:\.\d+)?)\s*\)\s*$/s);
+  if (!shellMatch) {
+    return null;
+  }
+
+  const body = shellMatch[1].trim();
+  const bpm = Number(shellMatch[2]);
+  if (!Number.isFinite(bpm)) {
+    return null;
+  }
+
+  if (body === 'silence') {
+    return { bpm, tracks: [] };
+  }
+
+  const stackMatch = body.match(new RegExp(`^stack\\((([\\s\\S]*))\\)$`.replace('(([\\s\\S]*))', '([\\s\\S]*)')));
+  if (!stackMatch) {
+    return null;
+  }
+
+  const expressions = splitTopLevelArgs(stackMatch[1]);
+  const tracks = expressions.map((expression, index) => parseTrackExpression(expression, previousTracks[index], index));
+  if (tracks.some((track) => track === null)) {
+    return null;
+  }
+
+  return { bpm, tracks: tracks as Track[] };
 }
 
 function stepsToPattern(sample: string, steps: number[]): string {

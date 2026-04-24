@@ -42,11 +42,16 @@ export interface SessionStore {
   lastError: string | null;
   lastPrompt: string | null;
 
+  isCodeManuallyEdited: boolean;
+
   setTracks: (tracks: Track[]) => void;
   setBpm: (bpm: number) => void;
   setPlaying: (value: boolean) => void;
   setActiveTab: (tab: ActiveTab) => void;
   setCurrentCode: (code: string) => void;
+  // BR-009: set code from manual editor edit (marks isCodeManuallyEdited)
+  setManualCode: (code: string) => void;
+  syncCodePattern: (pattern: TrackJSON, code: string) => void;
   toggleStep: (trackId: string, stepIndex: number) => void;
   setVolume: (trackId: string, volume: number) => void;
   toggleMute: (trackId: string) => void;
@@ -101,6 +106,7 @@ export const useSessionStore = create<SessionStore>()(
         isPlaying: false,
         activeTab: "sequencer",
         currentCode: compileCode(initialBpm, initialTracks),
+        isCodeManuallyEdited: false,
         turns: [],
         uiState: deriveUiState(initialTracks, false),
         lastError: null,
@@ -113,6 +119,7 @@ export const useSessionStore = create<SessionStore>()(
             return {
               tracks,
               currentCode: compileCode(state.bpm, tracks),
+              isCodeManuallyEdited: false,
               isPlaying: nextIsPlaying,
               uiState: deriveUiState(tracks, nextIsPlaying),
             };
@@ -124,6 +131,7 @@ export const useSessionStore = create<SessionStore>()(
             return {
               bpm: clamped,
               currentCode: compileCode(clamped, state.tracks),
+              isCodeManuallyEdited: false,
             };
           }),
 
@@ -135,6 +143,31 @@ export const useSessionStore = create<SessionStore>()(
           })),
         setActiveTab: (tab) => set({ activeTab: tab }),
         setCurrentCode: (code) => set({ currentCode: code }),
+        // BR-009: edición manual del editor — marca el grid como desincronizado con el código
+        setManualCode: (code) => set({ currentCode: code, isCodeManuallyEdited: true }),
+        /**
+         * Actualiza el store con un patrón parseado desde el código Strudel editado manualmente.
+         * Restablece `isCodeManuallyEdited` a false porque el grid vuelve a estar sincronizado.
+         * Limita las pistas a 5 defensivamente (BR-006).
+         *
+         * @see BR-009 Grid/editor sincronizados — este action representa el flujo Editor → Grid
+         */
+        syncCodePattern: (pattern, code) =>
+          set((state) => {
+            // BR-006: cap defensivo — el código parseado no puede superar 5 pistas
+            const nextTracks = pattern.tracks.slice(0, 5);
+            const nextIsPlaying = nextTracks.length > 0 ? state.isPlaying : false;
+
+            return {
+              bpm: pattern.bpm,
+              tracks: nextTracks,
+              currentCode: code,
+              // BR-009: el grid vuelve a reflejar el código — limpiar la marca de edición manual
+              isCodeManuallyEdited: false,
+              isPlaying: nextIsPlaying,
+              uiState: deriveUiState(nextTracks, nextIsPlaying),
+            };
+          }),
 
         toggleStep: (trackId, stepIndex) =>
           set((state) => {
@@ -156,6 +189,7 @@ export const useSessionStore = create<SessionStore>()(
             return {
               tracks,
               currentCode: compileCode(state.bpm, tracks),
+              isCodeManuallyEdited: false,
             };
           }),
 
@@ -170,6 +204,7 @@ export const useSessionStore = create<SessionStore>()(
             return {
               tracks,
               currentCode: compileCode(state.bpm, tracks),
+              isCodeManuallyEdited: false,
             };
           }),
 
@@ -182,6 +217,7 @@ export const useSessionStore = create<SessionStore>()(
             return {
               tracks,
               currentCode: compileCode(state.bpm, tracks),
+              isCodeManuallyEdited: false,
             };
           }),
 
@@ -205,6 +241,7 @@ export const useSessionStore = create<SessionStore>()(
             return {
               tracks,
               currentCode: compileCode(state.bpm, tracks),
+              isCodeManuallyEdited: false,
             };
           }),
 
@@ -220,6 +257,7 @@ export const useSessionStore = create<SessionStore>()(
               bpm: pattern.bpm,
               tracks: nextTracks,
               currentCode: compileCode(pattern.bpm, nextTracks),
+              isCodeManuallyEdited: false,
               isPlaying: nextTracks.length > 0,
               uiState: nextTracks.length > 0 ? "playing" : "idle",
               lastError: null,
@@ -236,6 +274,7 @@ export const useSessionStore = create<SessionStore>()(
           set((state) => ({
             tracks: nextTracks,
             currentCode: compileCode(state.bpm, nextTracks),
+            isCodeManuallyEdited: false,
           }));
           return true;
         },
@@ -250,6 +289,7 @@ export const useSessionStore = create<SessionStore>()(
           set((state) => ({
             tracks: nextTracks,
             currentCode: compileCode(state.bpm, nextTracks),
+            isCodeManuallyEdited: false,
           }));
           return true;
         },
@@ -271,6 +311,7 @@ export const useSessionStore = create<SessionStore>()(
             return {
               tracks: nextTracks,
               currentCode: compileCode(state.bpm, nextTracks),
+              isCodeManuallyEdited: false,
               isPlaying: nextIsPlaying,
               uiState: deriveUiState(nextTracks, nextIsPlaying),
             };
