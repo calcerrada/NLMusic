@@ -35,9 +35,11 @@ export async function POST(req: NextRequest) {
     const model = process.env.ANTHROPIC_MODEL;
     const provider = new ClaudeAdapter({ apiKey, model });
 
+    // BR-009: propagar codeMode si existe; en code mode no incluir `previous` obsoleto
     const sessionContext: SessionContext = {
       turns: context?.turns ?? [],
-      previous: context?.previous,
+      previous: context?.codeMode ? undefined : context?.previous,
+      codeMode: context?.codeMode,
       language: context?.language ?? 'mixed',
     };
 

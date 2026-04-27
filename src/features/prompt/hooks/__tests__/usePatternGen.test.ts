@@ -477,6 +477,81 @@ describe('usePatternGen — hook for LLM pattern generation', () => {
     })
   })
 
+  describe('TASK-09 — code mode context (BR-009)', () => {
+    it('sends codeMode context (not previous) when isCodeManuallyEdited is true', async () => {
+      useSessionStore.setState({
+        isCodeManuallyEdited: true,
+        currentCode: 'stack(s("bd ~ ~ ~"))',
+        bpm: 138,
+        tracks: [{ id: 'kick-1', name: 'Kick', steps: Array(16).fill(0) as (0 | 1)[], volume: 0.9, muted: false, solo: false }],
+      })
+
+      vi.mocked(global.fetch).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          ok: true,
+          source: 'llm',
+          trackJson: {
+            bpm: 120,
+            tracks: [{ id: 'kick-1', name: 'Kick', steps: Array(16).fill(0) as (0 | 1)[], volume: 0.9, muted: false, solo: false }],
+          },
+        }),
+      } as any)
+
+      const { result } = renderHook(() => usePatternGen())
+
+      await act(async () => {
+        await result.current.generate('make it slower')
+      })
+
+      const requestInit = vi.mocked(global.fetch).mock.calls[0][1] as RequestInit
+      const body = JSON.parse(String(requestInit.body)) as {
+        context: { previous?: unknown; codeMode?: { enabled: boolean; strudelCode: string; bpmHint: number } }
+      }
+
+      expect(body.context.codeMode).toBeDefined()
+      expect(body.context.codeMode?.enabled).toBe(true)
+      expect(body.context.codeMode?.strudelCode).toBe('stack(s("bd ~ ~ ~"))')
+      expect(body.context.codeMode?.bpmHint).toBe(138)
+      expect(body.context.previous).toBeUndefined()
+    })
+
+    it('sends previous context (not codeMode) when isCodeManuallyEdited is false', async () => {
+      useSessionStore.setState({
+        isCodeManuallyEdited: false,
+        currentCode: 'stack(s("bd ~ ~ ~"))',
+        bpm: 120,
+        tracks: [{ id: 'kick-1', name: 'Kick', steps: Array(16).fill(0) as (0 | 1)[], volume: 0.9, muted: false, solo: false }],
+      })
+
+      vi.mocked(global.fetch).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          ok: true,
+          source: 'llm',
+          trackJson: {
+            bpm: 120,
+            tracks: [{ id: 'kick-1', name: 'Kick', steps: Array(16).fill(0) as (0 | 1)[], volume: 0.9, muted: false, solo: false }],
+          },
+        }),
+      } as any)
+
+      const { result } = renderHook(() => usePatternGen())
+
+      await act(async () => {
+        await result.current.generate('add a snare')
+      })
+
+      const requestInit = vi.mocked(global.fetch).mock.calls[0][1] as RequestInit
+      const body = JSON.parse(String(requestInit.body)) as {
+        context: { previous?: unknown; codeMode?: unknown }
+      }
+
+      expect(body.context.previous).toBeDefined()
+      expect(body.context.codeMode).toBeUndefined()
+    })
+  })
+
   describe('integration: prompt → store → currentCode', () => {
     it('updates currentCode after successful pattern generation', async () => {
       const validResponse: TrackJSON = {

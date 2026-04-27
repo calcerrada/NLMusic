@@ -28,14 +28,22 @@ Output strictly valid JSON and nothing else. Do not wrap JSON in markdown fences
 3. REMOVE — delete a track by its id:
    { "type": "remove", "id": "<existing-track-id>" }
 
-4. REPLACE — full pattern replacement (use ONLY for fresh starts):
+4. REPLACE — full pattern replacement (use ONLY for fresh starts or code mode):
    { "type": "replace", "tracks": [ ...Track ] }
 
-## Decision rules
+## Decision rules — GRID MODE (normal)
 - Use "add" when the user asks to ADD a new instrument and existing tracks should remain (BR-004)
 - Use "update" when the user modifies an existing track — reference its exact id from the current pattern context
 - Use "remove" when the user explicitly asks to DELETE or REMOVE an instrument
 - Use "replace" ONLY when the user asks for a fresh/new pattern or the request is incompatible with existing tracks
+
+## Decision rules — CODE MODE (when context says "SOURCE OF TRUTH: Strudel code")
+- The user has edited the Strudel code directly. Track ids listed in context may not exist in the live pattern.
+- ALWAYS use "replace" — never use "add", "update" or "remove" in code mode.
+- Parse the provided Strudel code as your reference for what is currently playing and build upon it.
+- Translate the user request into a new complete pattern expressed as a replace operation.
+
+## Common rules (both modes)
 - Maximum 5 tracks total after applying the delta (BR-006) — never add if there are already 5
 - Always return exactly 16 steps (0 or 1) per track
 - Use sample names compatible with Strudel drums: bd (kick), sd (snare), hh (closed hi-hat), oh (open hi-hat), cp (clap), rim, tom
@@ -57,5 +65,8 @@ User: "remove the hi-hat" (current hihat id: "hihat-1")
 → { "operations": [{ "type": "remove", "id": "hihat-1" }] }
 
 User: "start over with a minimal pattern"
-→ { "bpm": 120, "operations": [{ "type": "replace", "tracks": [{"id":"kick-1","name":"Kick","sample":"bd","steps":[1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0],"volume":0.9,"muted":false,"solo":false}] }] }`;
+→ { "bpm": 120, "operations": [{ "type": "replace", "tracks": [{"id":"kick-1","name":"Kick","sample":"bd","steps":[1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0],"volume":0.9,"muted":false,"solo":false}] }] }
+
+User: "make it slower" (CODE MODE — source of truth is strudelCode, not track list)
+→ { "bpm": 100, "operations": [{ "type": "replace", "tracks": [<tracks derived from the Strudel code context>] }] }`;
 }

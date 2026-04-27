@@ -54,28 +54,46 @@ function normalizeToDelta(raw: unknown): PatternDelta {
 
 /**
  * Construye el prompt de usuario con snapshot del patrón previo y turnos recientes.
- * El contexto usa exclusivamente `previous` para que el contrato cliente/API/adapter
- * sea consistente en TASK-06.
+ *
+ * En grid mode usa `previous.tracks` como fuente de verdad para operaciones incrementales.
+ * En code mode usa `codeMode.strudelCode` como fuente de verdad; los track ids no son fiables.
+ *
+ * @see BR-009 Editor y pipeline comparten fuente de verdad coherente
+ * @see BR-004 Deltas incrementales solo sobre base fiable
  */
 function buildUserPrompt(prompt: string, context: SessionContext): string {
-  const currentTracks = context.previous?.tracks ?? [];
-  const currentBpm = context.previous?.bpm;
+  const lines: string[] = [`User request: ${prompt}`, ""];
 
-  const trackLines =
-    currentTracks.length > 0
-      ? currentTracks.map(
-          (t) => `  - id: "${t.id}", name: "${t.name}", sample: "${t.sample ?? t.tag ?? ""}", volume: ${t.volume}`
-        )
-      : ["  (no tracks yet — use replace to create a fresh pattern)"];
+  if (context.codeMode?.enabled) {
+    // BR-009: en code mode el código Strudel es la única fuente de verdad
+    lines.push(
+      "SOURCE OF TRUTH: Strudel code (user has edited the code directly)",
+      "Track ids in this context are NOT reliable — do NOT use add/update/remove.",
+      "You MUST use 'replace' as the operation type.",
+      "",
+      "Current Strudel code (what is actually playing):",
+      context.codeMode.strudelCode,
+      "",
+      `BPM hint: ${context.codeMode.bpmHint}`,
+    );
+  } else {
+    const currentTracks = context.previous?.tracks ?? [];
+    const currentBpm = context.previous?.bpm;
 
-  const lines = [
-    `User request: ${prompt}`,
-    "",
-    "Current pattern state:",
-    currentBpm ? `  BPM: ${currentBpm}` : "  BPM: (none)",
-    "  Tracks:",
-    ...trackLines,
-  ];
+    const trackLines =
+      currentTracks.length > 0
+        ? currentTracks.map(
+            (t) => `  - id: "${t.id}", name: "${t.name}", sample: "${t.sample ?? t.tag ?? ""}", volume: ${t.volume}`
+          )
+        : ["  (no tracks yet — use replace to create a fresh pattern)"];
+
+    lines.push(
+      "Current pattern state:",
+      currentBpm ? `  BPM: ${currentBpm}` : "  BPM: (none)",
+      "  Tracks:",
+      ...trackLines,
+    );
+  }
 
   if (context.turns.length > 0) {
     lines.push("", "Recent conversation:");

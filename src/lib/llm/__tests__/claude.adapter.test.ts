@@ -110,4 +110,44 @@ describe('ClaudeAdapter — PatternDelta contract and legacy compatibility', () 
 
     expect(result.operations).toEqual([{ type: 'remove', id: 'kick-1' }])
   })
+
+  describe('TASK-09 — code mode prompt (BR-009)', () => {
+    it('includes codeMode instructions in user prompt when codeMode is set', async () => {
+      createMock.mockResolvedValueOnce({
+        content: [{ type: 'text', text: JSON.stringify({ operations: [{ type: 'replace', tracks: [] }] }) }],
+      })
+
+      const codeModeContext: SessionContext = {
+        turns: [],
+        codeMode: { enabled: true, strudelCode: 'stack(s("bd ~ hh ~"))', bpmHint: 140 },
+      }
+
+      const adapter = new ClaudeAdapter({ apiKey: 'test-key' })
+      await adapter.generatePattern('make it faster', codeModeContext)
+
+      const callArgs = createMock.mock.calls[0][0] as { messages: Array<{ content: string }> }
+      const userPrompt = callArgs.messages[0].content
+
+      expect(userPrompt).toContain('SOURCE OF TRUTH: Strudel code')
+      expect(userPrompt).toContain('stack(s("bd ~ hh ~"))')
+      expect(userPrompt).toContain('replace')
+      expect(userPrompt).not.toContain('Current pattern state:')
+    })
+
+    it('includes grid state in user prompt when in normal mode', async () => {
+      createMock.mockResolvedValueOnce({
+        content: [{ type: 'text', text: JSON.stringify({ operations: [{ type: 'replace', tracks: [] }] }) }],
+      })
+
+      const adapter = new ClaudeAdapter({ apiKey: 'test-key' })
+      await adapter.generatePattern('louder kick', context)
+
+      const callArgs = createMock.mock.calls[0][0] as { messages: Array<{ content: string }> }
+      const userPrompt = callArgs.messages[0].content
+
+      expect(userPrompt).toContain('Current pattern state:')
+      expect(userPrompt).toContain('kick-1')
+      expect(userPrompt).not.toContain('SOURCE OF TRUTH: Strudel code')
+    })
+  })
 })

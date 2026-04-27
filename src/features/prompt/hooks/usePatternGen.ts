@@ -67,6 +67,8 @@ export function usePatternGen() {
   const storeSetError = useSessionStore((s) => s.setError);
   const setLastPrompt = useSessionStore((s) => s.setLastPrompt);
 
+  const isCodeManuallyEdited = useSessionStore((s) => s.isCodeManuallyEdited);
+
   const generate = useCallback(async (prompt: string): Promise<boolean> => {
     // BR-010: prompt vacío no llama al LLM
     if (!prompt.trim()) {
@@ -80,19 +82,26 @@ export function usePatternGen() {
     setLastPrompt(prompt);
     addTurn("user", prompt);
 
+    // BR-009: construir contexto según modo activo
+    // En grid mode, `previous` tiene el snapshot fiable de tracks.
+    // En code mode, `tracks` puede estar desfasado — solo enviamos el código actual.
+    const contextPayload = isCodeManuallyEdited
+      ? {
+          turns,
+          codeMode: { enabled: true, strudelCode: currentCode, bpmHint: bpm },
+          language: "mixed",
+        }
+      : {
+          turns,
+          previous: { bpm, tracks, strudelCode: currentCode },
+          language: "mixed",
+        };
+
     try {
       const response = await fetch("/api/generate-pattern", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          prompt,
-          context: {
-            turns,
-            // Contrato TASK-06: usar solo `previous` como snapshot previo
-            previous: { bpm, tracks, strudelCode: currentCode },
-            language: "mixed",
-          },
-        }),
+        body: JSON.stringify({ prompt, context: contextPayload }),
       });
 
       const payload = await response.json();
@@ -138,7 +147,7 @@ export function usePatternGen() {
     } finally {
       setIsLoading(false);
     }
-  }, [addTurn, bpm, currentCode, loadPattern, setLastPrompt, startLoading, storeSetError, tracks, turns]);
+  }, [addTurn, bpm, currentCode, isCodeManuallyEdited, loadPattern, setLastPrompt, startLoading, storeSetError, tracks, turns]);
 
   // BR-003: reintento — reutiliza lastPrompt del store sin que el usuario reescriba
   const retry = useCallback(() => {

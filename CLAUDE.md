@@ -249,14 +249,31 @@ interface LLMProvider {
 
 ## Cómo trabajar con tareas
 
-Cada tarea de desarrollo tiene su propio archivo en `.claude/tasks/`.
+Cada tarea de desarrollo tiene su propio archivo en `.claude/tasks/TASK-XX-*.md`.
+El estado se mantiene en dos sitios sincronizados:
+
+- **Frontmatter YAML del archivo**: `status: done | in-progress | pending`, más
+  `completed_commit:` y `completed_date:` cuando la task se cierra.
+- **Checklist agregado** en `.claude/tasks/TASK-INDEX.md` con todas las tasks
+  marcadas `[x]` o `[ ]` y la siguiente apuntada con `← siguiente`.
+
 Antes de implementar cualquier feature:
 
-1. Lee el archivo de tarea correspondiente en `.claude/tasks/`
-2. Localiza el CAP-ID en `nlmusic-spec.md`
-3. Lee las secciones 5 (reglas), 6 (estados), 7 (edges) y 8 (BDD) para esa capacidad
-4. Implementa respetando todas las reglas y cubriendo todos los edge cases
-5. Verifica contra los escenarios BDD de la Sección 8
+1. Mira `TASK-INDEX.md` para identificar qué task toca y cuáles son sus dependencias
+2. Lee el archivo de tarea correspondiente — fíjate en el frontmatter (`status`)
+3. Localiza el CAP-ID en `nlmusic-spec.md`
+4. Lee las secciones 5 (reglas), 6 (estados), 7 (edges) y 8 (BDD) para esa capacidad
+5. Implementa respetando todas las reglas y cubriendo todos los edge cases
+6. Verifica contra los escenarios BDD de la Sección 8
+
+**Al cerrar una task:**
+
+1. Cambia `status: pending` → `status: done` en el frontmatter del archivo
+2. Añade `completed_commit:` (hash corto) y `completed_date:` (YYYY-MM-DD)
+3. Marca `[x]` en el checklist de `TASK-INDEX.md`
+4. Si la task introdujo cambios estructurales (nuevas dependencias, nuevos directorios,
+   cambios en el modelo de datos) actualiza la sección "Estado actual del proyecto"
+   más abajo en este mismo `CLAUDE.md`
 
 ---
 
@@ -266,15 +283,23 @@ Antes de implementar cualquier feature:
 - Pipeline LLM → JSON → Strudel ✅
 - Sequencer visual 16 pasos, mute/solo, volumen ✅
 - Play/Stop, BPM control, BarIndicator ✅
-- StrudelCodePanel (read-only) + osciloscopio ✅
 - Persistencia Zustand + localStorage ✅
 - Build producción sin errores ✅
+- Validación e2e del flujo Prompt → API → Pipeline → Adapter → Store → Strudel (TASK-01)
+- Robustez de inicialización Strudel + banner EC-010 (TASK-02)
+- Límite máximo de 5 pistas, contador y truncado defensivo (TASK-03)
+- Estado ERROR con reintento, prompt persistente (TASK-04)
+- Incrementalidad de pistas con `applyDelta` (add/update/remove/replace) (TASK-05)
+- Coherencia compiler + contrato API (mute via `gain(0)`) (TASK-06)
+- Eliminar pista desde UI con botón ✕ — transición a IDLE en última pista (TASK-07)
+- StrudelCodePanel editable (textarea) con sincronización bidireccional grid ↔ código + flag `isCodeManuallyEdited` (TASK-08)
+- Contexto LLM coherente en modo código: `codeMode` como fuente de verdad y guardas de pipeline para deltas inseguros (TASK-09)
 
-**Pendiente Sprint 2:**
-- Validación e2e en navegador (prompt → audio real)
-- useBeatClock sincronizado con clock real de Strudel
-- StrudelCodePanel editable + sincronización bidireccional (CAP-NLM-008)
-- Gestión de estado ERROR con reintento (Sección 6)
-- Eliminar pista desde UI — botón ✕ (CAP-NLM-003)
-- Tercera pestaña Configuración/Guía (CAP-NLM-010)
-- Multiidioma UI — ES / EN (Sección 10)
+**Pendiente Sprint 2 (orden de ejecución):**
+- TASK-10 — Migrar editor a CodeMirror 6 + `@strudel/codemirror` con syntax highlighting (paleta del design system)
+- TASK-11 — Hap highlighting en tiempo real (flash de tokens al sonar) sobre el editor CodeMirror
+- TASK-12 — Tercera pestaña Configuración/Guía (CAP-NLM-010) + toggle editor avanzado/simple
+- TASK-13 — Multiidioma UI — ES / EN (Sección 10)
+
+El detalle de cada tarea está en `.claude/tasks/`. El índice maestro
+con dependencias y criterios de revisión está en `.claude/tasks/TASK-INDEX.md`.

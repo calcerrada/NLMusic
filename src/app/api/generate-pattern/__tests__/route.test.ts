@@ -172,4 +172,35 @@ describe('POST /api/generate-pattern — TASK-06 contract coherence', () => {
       })
     )
   })
+
+  it('TASK-09: propagates codeMode and clears previous when in code mode', async () => {
+    runV0PipelineMock.mockResolvedValueOnce({
+      usedFallback: false,
+      trackJson: { bpm: 120, tracks: [] },
+    })
+
+    const codeMode = {
+      enabled: true,
+      strudelCode: 'stack(s("bd ~ hh ~"))',
+      bpmHint: 138,
+    }
+
+    await POST(makeRequest({
+      prompt: 'make it slower',
+      context: {
+        turns: [],
+        codeMode,
+        previous: { bpm: 138, tracks: [] },
+      },
+    }) as never)
+
+    expect(runV0PipelineMock).toHaveBeenCalledWith(
+      expect.anything(),
+      'make it slower',
+      expect.objectContaining({
+        codeMode,
+        previous: undefined,
+      })
+    )
+  })
 })

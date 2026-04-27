@@ -9,8 +9,9 @@
     "lint": "next lint",
     "v0:cli": "tsx src/index.ts",
     "v0:test": "tsx src/v0-test.ts",
-    "test": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test": "vitest run --pool=threads",
+    "test:watch": "vitest --pool=threads",
+    "test:coverage": "vitest run --coverage --pool=threads"
   },
   "keywords": [],
   "author": "",

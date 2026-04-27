@@ -118,7 +118,7 @@ function parseTrackExpression(source: string, previousTrack: Track | undefined, 
 
   const sample = distinctTokens[0] ?? previousTrack?.sample ?? previousTrack?.tag ?? 'perc';
   const tag = inferTagFromSample(sample);
-  const previousSample = previousTrack?.sample ?? resolveSample(previousTrack ?? { tag: previousTrack?.tag, steps: [], volume: 0, muted: false, solo: false });
+  const previousSample = previousTrack?.sample ?? (previousTrack ? resolveSample(previousTrack) : undefined);
   const shouldReuseName = previousTrack && previousSample === sample;
 
   return {
