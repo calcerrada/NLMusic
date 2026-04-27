@@ -1,3 +1,10 @@
+---
+id: TASK-06
+status: done
+completed_commit: 6aa9dc4
+completed_date: 2026-04-24
+---
+
 # TASK-06 — Coherencia compiler + contrato API
 
 **Depende de:** TASK-05 completada (porque toca los mismos archivos del contrato LLM)

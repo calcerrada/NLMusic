@@ -531,6 +531,9 @@ class CustomAdapter implements LLMProvider { ... }   // Cualquier proveedor comp
 | Reproducción continua en loop mientras se edita | Experiencia de instrumento, no de render |
 | Iteración conversacional — el LLM recuerda el contexto de la sesión | Flujo de sesión continua |
 | LLMProvider adapter desde el principio | Coste cero ahora, evita refactor futuro |
+| Panel Strudel Code editable con sincronización bidireccional grid ↔ código | CAP-NLM-008 — control total para usuarios avanzados sin perder el grid |
+| Resaltado de sintaxis del código Strudel (CodeMirror 6 + `@strudel/codemirror`) | Coste bajo (paquete oficial), valor alto en legibilidad y feel de instrumento |
+| Hap highlighting (flash de tokens al sonar) | `activatePattern()` de `@strudel/codemirror` lo da sincronizado con el scheduler — cierra la experiencia de live coding |
 
 ### Should — v1 si el MVP funciona bien
 
@@ -538,7 +541,6 @@ class CustomAdapter implements LLMProvider { ... }   // Cualquier proveedor comp
 |---|---|
 | BPM ajustable con slider | Importante para el feeling, Strudel tiene un default usable |
 | Indicador visual del paso activo (beat cursor) | Mejora la experiencia en vivo notablemente |
-| Panel Strudel Code editable con resaltado activo | `@strudel/codemirror` lo da de serie — coste bajo, valor muy alto para usuarios avanzados |
 | Osciloscopio de audio real (frecuencias) | `getAudioContext()` de `@strudel/webaudio` da acceso directo — sin librerías extra |
 | Referencias artísticas ("algo entre Aphex Twin y minimal") | Alta complejidad de prompting |
 | Export WAV/MP3 | Útil pero no es el core de la experiencia |
@@ -590,11 +592,11 @@ class CustomAdapter implements LLMProvider { ... }   // Cualquier proveedor comp
 
 ### v1 — Experiencia completa de live coding natural
 - BPM slider ajustable en la barra de transporte
-- Beat cursor sincronizado con el clock de Strudel
-- Panel "Strudel Code" con CodeMirror editable y resaltado activo de notas (`@strudel/codemirror`)
-- Osciloscopio de audio real por frecuencias vía `AnalyserNode` de WebAudio
+- Beat cursor sincronizado con el clock real de Strudel (sustituye al `setInterval` actual)
+- Osciloscopio de audio real por frecuencias vía `AnalyserNode` de WebAudio (el del MVP es decorativo)
 - Contexto de sesión más rico y coherente
 - Selección de LLM desde la interfaz (la arquitectura adapter ya lo soporta)
+- Gestión de API key por el usuario (CAP-NLM-011)
 
 ---
 

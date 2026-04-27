@@ -1,3 +1,10 @@
+---
+id: TASK-05
+status: done
+completed_commit: 0b654c9
+completed_date: 2026-04-24
+---
+
 # TASK-05 — Incrementalidad de pistas (BR-004)
 
 **Depende de:** TASK-04 completada (estado ERROR estable antes de tocar el contrato LLM)

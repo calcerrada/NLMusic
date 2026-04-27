@@ -1,4 +1,11 @@
-# TASK-11 — Contexto LLM coherente en modo código (CAP-NLM-002 + CAP-NLM-008)
+---
+id: TASK-09
+status: done
+completed_commit: pending-fill-after-commit
+completed_date: 2026-04-27
+---
+
+# TASK-09 — Contexto LLM coherente en modo código (CAP-NLM-002 + CAP-NLM-008)
 
 **Depende de:** TASK-08 completada
 **CAP:** CAP-NLM-002 + CAP-NLM-008

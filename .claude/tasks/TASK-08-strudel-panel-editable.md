@@ -1,3 +1,11 @@
+---
+id: TASK-08
+status: done
+completed_commit: 177f001
+completed_date: 2026-04-24
+notes: Implementado con `<textarea>` + debounce 600ms + `setManualCode`/`syncCodePattern`. La migración a CodeMirror queda en TASK-10.
+---
+
 # TASK-08 — StrudelCodePanel editable + sincronización bidireccional (CAP-NLM-008)
 
 **Depende de:** TASK-07 completada

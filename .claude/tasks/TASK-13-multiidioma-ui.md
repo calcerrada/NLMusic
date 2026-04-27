@@ -1,6 +1,11 @@
-# TASK-10 — Multiidioma UI: ES / EN
+---
+id: TASK-13
+status: pending
+---
 
-**Depende de:** TASK-09 completada (UI estable antes de añadir i18n)
+# TASK-13 — Multiidioma UI: ES / EN
+
+**Depende de:** TASK-12 completada (UI estable antes de añadir i18n)
 **Spec de referencia:** `nlmusic-spec.md` Sección 10 (Adaptaciones Geográficas)
 
 ---

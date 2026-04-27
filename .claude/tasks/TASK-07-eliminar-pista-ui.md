@@ -1,3 +1,10 @@
+---
+id: TASK-07
+status: done
+completed_commit: 7ec08f9
+completed_date: 2026-04-24
+---
+
 # TASK-07 — Eliminar pista desde UI (CAP-NLM-003)
 
 **Depende de:** TASK-04 completada (estado ERROR debe estar estable antes de añadir transiciones IDLE)

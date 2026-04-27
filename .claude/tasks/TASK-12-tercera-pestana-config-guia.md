@@ -1,6 +1,11 @@
-# TASK-09 — Tercera pestaña: Configuración / Guía (CAP-NLM-010)
+---
+id: TASK-12
+status: pending
+---
 
-**Depende de:** TASK-08 completada
+# TASK-12 — Tercera pestaña: Configuración / Guía (CAP-NLM-010)
+
+**Depende de:** TASK-08, TASK-10 y TASK-11 completadas
 **CAP:** CAP-NLM-010
 **Spec de referencia:** `nlmusic-spec.md` Secciones 2, 3 (nota sobre API key en MVP)
 
@@ -78,6 +83,32 @@ Shift + Enter  Nueva línea en el prompt
 
 ---
 
+### Bloque 4 — Preferencias del editor de código
+
+Opciones que afectan al `StrudelCodePanel` (derivado de TASK-10 y TASK-11):
+
+```
+Editor:              [ Avanzado (CodeMirror) · Simple (textarea) ]
+Highlighting:        [ Activado · Desactivado ]
+Visualización haps:  [ Activado · Desactivado ]   (solo si editor = Avanzado)
+```
+
+**Comportamiento esperado:**
+
+- Cada preferencia persiste en el store (localStorage vía Zustand persist)
+- El cambio se refleja inmediatamente sin recargar
+- Si el usuario elige "Simple", se carga el `<textarea>` plano — útil en dispositivos lentos o si CodeMirror da problemas
+- Si "Highlighting" está desactivado, el editor avanzado conserva la funcionalidad pero sin colores (theme plano)
+- "Visualización haps" solo es visible cuando `editor === 'advanced'` — el textarea plano no puede pintarlos
+
+**Valores por defecto:** `editor = 'advanced'`, `highlighting = true`, `hapVisualization = true`.
+
+**Nota sobre rendimiento:** si en la investigación de TASK-11 se detecta que la
+visualización de haps impacta FPS en equipos modestos, este toggle permite al
+usuario desactivarla sin perder el editor avanzado.
+
+---
+
 ## Diseño
 
 Seguir el design system existente:
@@ -101,7 +132,8 @@ src/features/config/
 │   ├── ConfigTab.tsx          # Contenedor de la pestaña
 │   ├── SystemStatus.tsx       # Bloque 1: estado del sistema
 │   ├── PromptGuide.tsx        # Bloque 2: ejemplos de prompts
-│   └── KeyboardShortcuts.tsx  # Bloque 3: atajos
+│   ├── KeyboardShortcuts.tsx  # Bloque 3: atajos
+│   └── EditorPreferences.tsx  # Bloque 4: preferencias del editor de código
 └── index.ts
 ```
 
@@ -135,5 +167,8 @@ para ello sin necesitar rediseño completo.
 - `src/features/config/components/SystemStatus.tsx` — nuevo
 - `src/features/config/components/PromptGuide.tsx` — nuevo
 - `src/features/config/components/KeyboardShortcuts.tsx` — nuevo
+- `src/features/config/components/EditorPreferences.tsx` — nuevo (toggle editor simple/avanzado)
 - `src/features/config/index.ts` — nuevo barrel export
+- `src/store/sessionStore.ts` — añadir `editorMode: 'advanced' | 'simple'`, `highlightingEnabled: boolean`, `hapVisualizationEnabled: boolean` al estado y a `PersistedState`
+- `src/features/code-view/components/StrudelCodePanel.tsx` — leer preferencias y renderizar `StrudelEditor` o `<textarea>` según `editorMode`
 - `src/app/page.tsx` — añadir tercera pestaña al TabBar

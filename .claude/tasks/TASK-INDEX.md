@@ -1,34 +1,59 @@
 # TASK-INDEX — Índice de tareas Sprint 2
 
-> Orden de ejecución, dependencias y criterios de revisión específicos por tarea.
+> Orden de ejecución, dependencias, **estado** y criterios de revisión específicos por tarea.
 > El protocolo de revisión común está en REVIEW-PROTOCOL.md.
 
 ---
 
-## Orden de ejecución
+## Mecanismo de tracking
 
+Cada `TASK-XX-*.md` lleva un frontmatter YAML con `status: done | in-progress | pending`,
+`completed_commit` y `completed_date` cuando aplica. Este índice mantiene la vista
+agregada (checklist abajo). Para listar pendientes desde la terminal:
+
+```bash
+grep -l "^status: pending" .claude/tasks/TASK-*.md
 ```
-TASK-01 — Validación e2e (auditoría)
-    ↓ desbloquea todo
-TASK-02 — Robustez inicialización Strudel
-TASK-03 — Límite máximo 5 pistas
-    ↓ ambas independientes, ejecutar en cualquier orden
-TASK-04 — Estado ERROR con reintento
-    ↓ máquina de estados completa
-TASK-05 — Incrementalidad de pistas (PatternDelta)
-    ↓ cambia el contrato LLM → necesaria antes de limpiezas
-TASK-06 — Coherencia compiler + contrato API
-    ↓ limpieza sobre lo anterior
-TASK-07 — Eliminar pista desde UI
-    ↓ transiciones IDLE completas
-TASK-08 — StrudelCodePanel editable
-    ↓ el prompt debe respetar la fuente de verdad en modo código
-TASK-11 — Contexto LLM coherente en modo código
-    ↓ cierre de integración editor ↔ prompts
-TASK-09 — Tercera pestaña config/guía
-    ↓ i18n requiere UI terminada
-TASK-10 — Multiidioma UI
-```
+
+**Al cerrar una task:**
+1. Cambia `status: pending` → `status: done` en el frontmatter del archivo
+2. Añade `completed_commit:` y `completed_date:`
+3. Marca `[x]` en el checklist de abajo
+4. Actualiza la sección "Estado actual del proyecto" en `CLAUDE.md` si la task introdujo cambios estructurales (nuevas dependencias, nuevos directorios, cambios en el modelo de datos)
+
+---
+
+## Estado y orden de ejecución
+
+- [x] **TASK-01** — Validación e2e (auditoría) · `c462484` · 2026-04-23
+- [x] **TASK-02** — Robustez inicialización Strudel (EC-010) · `c462484` · 2026-04-23
+- [x] **TASK-03** — Límite máximo 5 pistas (BR-006) · `3281748` · 2026-04-23
+- [x] **TASK-04** — Estado ERROR con reintento · `fdfa46c` · 2026-04-23
+- [x] **TASK-05** — Incrementalidad de pistas (PatternDelta) · `0b654c9` · 2026-04-24
+- [x] **TASK-06** — Coherencia compiler + contrato API · `6aa9dc4` · 2026-04-24
+- [x] **TASK-07** — Eliminar pista desde UI · `7ec08f9` · 2026-04-24
+- [x] **TASK-08** — StrudelCodePanel editable (textarea) · `177f001` · 2026-04-24
+- [x] **TASK-09** — Contexto LLM coherente en modo código · `pending-fill-after-commit` · 2026-04-27
+- [ ] **TASK-10** — Editor Strudel con CodeMirror (syntax highlighting)  ← siguiente
+- [ ] **TASK-11** — Hap highlighting en tiempo real
+- [ ] **TASK-12** — Tercera pestaña config/guía (+ toggle editor avanzado/simple)
+- [ ] **TASK-13** — Multiidioma UI (ES / EN)
+
+**Dependencias clave:**
+- TASK-04 desbloquea TASK-05 y TASK-07
+- TASK-05 desbloquea TASK-06
+- TASK-07 desbloquea TASK-08
+- TASK-08 desbloquea TASK-09 y TASK-10
+- TASK-10 desbloquea TASK-11
+- TASK-08, TASK-10 y TASK-11 desbloquean TASK-12
+- TASK-12 desbloquea TASK-13
+
+**Nota sobre el orden TASK-08 → TASK-09 → TASK-10:**
+TASK-09 se ejecuta antes de TASK-10 porque cierra el contrato cliente/API/pipeline
+del modo código sobre la base estable del textarea. TASK-10 solo cambia el visor
+sin tocar ese contrato — así la migración a CodeMirror no interfiere con cambios
+de semántica en el pipeline. TASK-11 añade visualización encima del editor ya
+migrado, y TASK-12 cierra con el toggle "editor simple / avanzado".
 
 ---
 
@@ -166,35 +191,7 @@ Luego corregir el error y verificar que el audio se actualiza.
 
 ---
 
-### TASK-09 — Tercera pestaña config/guía
-
-Revisión específica (CAP-NLM-010):
-- [ ] La pestaña existe y es navegable
-- [ ] El estado del motor Strudel es correcto (`isReady`)
-- [ ] Los ejemplos de prompt son clickables e insertan el texto en el PromptBox
-- [ ] Al hacer click en un ejemplo se cambia a la pestaña Sequencer
-- [ ] El diseño usa las CSS variables del design system — sin colores hardcodeados
-- [ ] Hay espacio previsto para el formulario de API key de v1+ (no implementado, solo el espacio)
-
----
-
-### TASK-10 — Multiidioma UI
-
-Revisión específica (Sección 10):
-- [ ] ES y EN están completos — ninguna key sin traducir
-- [ ] El system prompt del LLM NO se localiza (siempre inglés)
-- [ ] La preferencia de idioma persiste en localStorage
-- [ ] El selector de idioma es visible y funcional
-- [ ] El cambio de idioma es inmediato — sin recarga de página
-- [ ] Los mensajes de error técnicos de Strudel se muestran en inglés (no se localizan)
-
-Prueba manual sugerida:
-Cambiar a EN, recargar la página, verificar que el idioma persiste.
-Volver a ES y verificar que todos los textos están en español.
-
----
-
-### TASK-11 — Contexto LLM coherente en modo código
+### TASK-09 — Contexto LLM coherente en modo código
 
 Revisión específica (BR-003, BR-004, BR-005, BR-009):
 - [ ] `SessionContext` distingue explícitamente grid mode vs code mode
@@ -209,6 +206,77 @@ Editar el código Strudel hasta entrar en modo código y luego enviar un prompt 
 "hazlo más lento" o "añade un hi-hat". Verificar que la request no recicla pistas
 obsoletas como fuente de verdad y que el sistema no aplica deltas incrementales
 sobre un patrón que ya no coincide con el audio actual.
+
+---
+
+### TASK-10 — Editor Strudel con CodeMirror (syntax highlighting)
+
+Revisión específica (BR-009, EC-006, EC-010):
+- [ ] `@strudel/codemirror` y el core de CodeMirror 6 están instalados y fijados a un minor compatible
+- [ ] El editor carga vía `dynamic(..., { ssr: false })` — no rompe el build de Next
+- [ ] El highlighting usa la paleta del design system: keywords `--cyan`, strings `--amber`, números `--violet`, comentarios atenuados
+- [ ] La sincronización Grid → Editor sigue funcionando (edita un paso, el código se actualiza con colores)
+- [ ] La sincronización Editor → Grid sigue funcionando (debounce de 600ms, `parseStrudelToTrackJson` se invoca igual)
+- [ ] El error inline de EC-006 sigue apareciendo y el audio anterior no se interrumpe
+- [ ] `isCodeManuallyEdited` se marca correctamente en el store al editar (no se ha perdido la semántica de TASK-08)
+- [ ] No hay bucles de update: editar desde fuera no dispara `onChange` del editor
+- [ ] El bundle no crece más de ~350 KB gzip respecto a antes de TASK-10
+
+Prueba manual sugerida:
+Abrir la pestaña Strudel, verificar highlighting correcto. Editar el grid
+en la pestaña Sequencer y volver: el código debe reflejar el cambio con colores.
+Escribir código inválido en el editor: debe aparecer el banner rojo sin cortar el audio.
+
+---
+
+### TASK-11 — Hap highlighting en tiempo real
+
+Revisión específica (BR-001, BR-009):
+- [ ] El bloque `## Hallazgos` de la task está rellenado con la API real encontrada
+- [ ] Cuando el audio suena, los tokens del código reciben un flash visible de ~100-150ms
+- [ ] El FPS del editor se mantiene ≥ 55 con 4 pistas a 138 BPM (medir con DevTools)
+- [ ] Al pausar el audio, las decoraciones se limpian y no aparecen más flashes
+- [ ] Al desmontar el componente, la suscripción al scheduler se cancela (sin leaks de memoria)
+- [ ] Editar el código mientras suena no desplaza el cursor ni ralentiza la escritura
+- [ ] Si `@strudel/web` no expone la API esperada, el fallback degradado (resaltar paso global) funciona sin errores en consola
+- [ ] El código es parseable: si se produce un error de runtime en el scheduler, no se pinta highlighting corrupto
+
+Prueba manual sugerida:
+Arrancar un patrón de 3 pistas y observar el editor Strudel: los tokens `"bd"`, `"sd"`, `"hh"`
+deben flashear al ritmo del audio. Pulsar Stop: las decoraciones paran. Re-arrancar y editar
+el código mientras suena — no debe haber jank perceptible.
+
+---
+
+### TASK-12 — Tercera pestaña config/guía
+
+Revisión específica (CAP-NLM-010):
+- [ ] La pestaña existe y es navegable
+- [ ] El estado del motor Strudel es correcto (`isReady`)
+- [ ] Los ejemplos de prompt son clickables e insertan el texto en el PromptBox
+- [ ] Al hacer click en un ejemplo se cambia a la pestaña Sequencer
+- [ ] El diseño usa las CSS variables del design system — sin colores hardcodeados
+- [ ] Hay espacio previsto para el formulario de API key de v1+ (no implementado, solo el espacio)
+- [ ] Toggle `editor` (avanzado/simple) persiste en localStorage y cambia el componente renderizado en el panel Strudel
+- [ ] Toggle `highlighting` desactiva los colores sin romper el editor avanzado
+- [ ] Toggle `hapVisualization` solo se muestra cuando `editor === 'advanced'`
+- [ ] Cambiar cualquier toggle no interrumpe el audio (BR-001)
+
+---
+
+### TASK-13 — Multiidioma UI
+
+Revisión específica (Sección 10):
+- [ ] ES y EN están completos — ninguna key sin traducir
+- [ ] El system prompt del LLM NO se localiza (siempre inglés)
+- [ ] La preferencia de idioma persiste en localStorage
+- [ ] El selector de idioma es visible y funcional
+- [ ] El cambio de idioma es inmediato — sin recarga de página
+- [ ] Los mensajes de error técnicos de Strudel se muestran en inglés (no se localizan)
+
+Prueba manual sugerida:
+Cambiar a EN, recargar la página, verificar que el idioma persiste.
+Volver a ES y verificar que todos los textos están en español.
 
 ---
 
