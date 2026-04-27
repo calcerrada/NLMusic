@@ -1,3 +1,11 @@
+---
+id: TASK-02
+status: done
+completed_commit: c462484
+completed_date: 2026-04-23
+notes: Implementación entró como parte del trabajo derivado de la auditoría e2e (TASK-01). Tests dedicados en `transport-ec010.test.tsx` y `useStrudel.test.ts`.
+---
+
 # TASK-02 — Robustez de inicialización Strudel (EC-010)
 
 **Depende de:** TASK-01 completada

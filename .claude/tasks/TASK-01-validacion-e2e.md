@@ -1,3 +1,10 @@
+---
+id: TASK-01
+status: done
+completed_commit: c462484
+completed_date: 2026-04-23
+---
+
 # TASK-01 — Validación e2e: Auditoría del flujo completo
 
 **Tipo:** Auditoría estática de código (no genera features nuevas)

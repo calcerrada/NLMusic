@@ -318,4 +318,116 @@ describe('pipeline — runV0Pipeline', () => {
       expect(result1.trackJson).toEqual(result2.trackJson)
     })
   })
+
+  describe('TASK-09 — code mode guards (BR-009, BR-004)', () => {
+    it('accepts replace in code mode without previous snapshot', async () => {
+      vi.mocked(mockProvider.generatePattern).mockResolvedValueOnce(replaceOneDelta(120))
+
+      const context: SessionContext = {
+        turns: [],
+        codeMode: { enabled: true, strudelCode: 'stack(s("bd"))', bpmHint: 120 },
+      }
+
+      const result = await runV0Pipeline(mockProvider, 'make it slower', context)
+
+      expect(result.usedFallback).toBe(false)
+      expect(result.trackJson.tracks).toHaveLength(1)
+    })
+
+    it('rejects add operation in code mode without previous — triggers fallback (BR-003)', async () => {
+      vi.mocked(mockProvider.generatePattern).mockResolvedValueOnce({
+        operations: [
+          {
+            type: 'add',
+            track: { id: 'hh-1', name: 'Hi-Hat', steps: Array(16).fill(0) as (0 | 1)[], volume: 0.6, muted: false, solo: false },
+          },
+        ],
+      })
+
+      const context: SessionContext = {
+        turns: [],
+        codeMode: { enabled: true, strudelCode: 'stack(s("bd"))', bpmHint: 138 },
+      }
+
+      const result = await runV0Pipeline(mockProvider, 'add a hihat', context)
+
+      expect(result.usedFallback).toBe(true)
+      expect(result.error).toContain('code mode')
+    })
+
+    it('rejects update operation in code mode without previous — triggers fallback', async () => {
+      vi.mocked(mockProvider.generatePattern).mockResolvedValueOnce({
+        operations: [{ type: 'update', id: 'kick-1', patch: { volume: 0.5 } }],
+      })
+
+      const context: SessionContext = {
+        turns: [],
+        codeMode: { enabled: true, strudelCode: 'stack(s("bd"))', bpmHint: 138 },
+      }
+
+      const result = await runV0Pipeline(mockProvider, 'lower kick', context)
+
+      expect(result.usedFallback).toBe(true)
+    })
+
+    it('rejects remove operation in code mode without previous — triggers fallback', async () => {
+      vi.mocked(mockProvider.generatePattern).mockResolvedValueOnce({
+        operations: [{ type: 'remove', id: 'kick-1' }],
+      })
+
+      const context: SessionContext = {
+        turns: [],
+        codeMode: { enabled: true, strudelCode: 'stack(s("bd"))', bpmHint: 138 },
+      }
+
+      const result = await runV0Pipeline(mockProvider, 'remove kick', context)
+
+      expect(result.usedFallback).toBe(true)
+    })
+
+    it('grid mode with previous snapshot still applies incremental deltas normally', async () => {
+      vi.mocked(mockProvider.generatePattern).mockResolvedValueOnce({
+        operations: [
+          {
+            type: 'add',
+            track: { id: 'hh-1', name: 'Hi-Hat', steps: Array(16).fill(0) as (0 | 1)[], volume: 0.6, muted: false, solo: false },
+          },
+        ],
+      })
+
+      const context: SessionContext = {
+        turns: [],
+        previous: {
+          bpm: 138,
+          tracks: [{ id: 'kick-1', name: 'Kick', steps: Array(16).fill(0) as (0 | 1)[], volume: 0.9, muted: false, solo: false }],
+        },
+      }
+
+      const result = await runV0Pipeline(mockProvider, 'add hihat', context)
+
+      expect(result.usedFallback).toBe(false)
+      expect(result.trackJson.tracks).toHaveLength(2)
+    })
+
+    it('preserves bpmHint in code mode when replace omits bpm', async () => {
+      vi.mocked(mockProvider.generatePattern).mockResolvedValueOnce({
+        operations: [
+          {
+            type: 'replace',
+            tracks: [{ id: 'kick-1', name: 'Kick', steps: Array(16).fill(0) as (0 | 1)[], volume: 0.9, muted: false, solo: false }],
+          },
+        ],
+      })
+
+      const context: SessionContext = {
+        turns: [],
+        codeMode: { enabled: true, strudelCode: 'stack(s("bd"))', bpmHint: 96 },
+      }
+
+      const result = await runV0Pipeline(mockProvider, 'make it slower', context)
+
+      expect(result.usedFallback).toBe(false)
+      expect(result.trackJson.bpm).toBe(96)
+    })
+  })
 })

@@ -1,3 +1,10 @@
+---
+id: TASK-04
+status: done
+completed_commit: fdfa46c
+completed_date: 2026-04-23
+---
+
 # TASK-04 — Estado ERROR con reintento
 
 **Depende de:** TASK-01 completada sin issues bloqueantes (TASK-02 y TASK-03 recomendadas pero no obligatorias)

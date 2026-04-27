@@ -1,3 +1,10 @@
+---
+id: TASK-03
+status: done
+completed_commit: 3281748
+completed_date: 2026-04-23
+---
+
 # TASK-03 — Límite máximo de 5 pistas (BR-006)
 
 **Depende de:** TASK-01 completada
