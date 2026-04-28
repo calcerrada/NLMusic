@@ -294,12 +294,19 @@ Antes de implementar cualquier feature:
 - Eliminar pista desde UI con botón ✕ — transición a IDLE en última pista (TASK-07)
 - StrudelCodePanel editable (textarea) con sincronización bidireccional grid ↔ código + flag `isCodeManuallyEdited` (TASK-08)
 - Contexto LLM coherente en modo código: `codeMode` como fuente de verdad y guardas de pipeline para deltas inseguros (TASK-09)
+- Editor CodeMirror 6 con syntax highlighting (paleta del design system) — deps: codemirror, @codemirror/*, @strudel/codemirror (TASK-10)
 
 **Pendiente Sprint 2 (orden de ejecución):**
-- TASK-10 — Migrar editor a CodeMirror 6 + `@strudel/codemirror` con syntax highlighting (paleta del design system)
 - TASK-11 — Hap highlighting en tiempo real (flash de tokens al sonar) sobre el editor CodeMirror
 - TASK-12 — Tercera pestaña Configuración/Guía (CAP-NLM-010) + toggle editor avanzado/simple
 - TASK-13 — Multiidioma UI — ES / EN (Sección 10)
+
+**Nuevas dependencias añadidas (TASK-10):**
+- `codemirror@6.0.2`, `@codemirror/state`, `@codemirror/view`, `@codemirror/language`, `@codemirror/commands`, `@codemirror/lang-javascript`, `@strudel/codemirror@1.3.0`
+
+**Nuevos directorios/archivos (TASK-10):**
+- `src/features/code-view/theme/nlmusicTheme.ts` — theme dedicado reutilizable
+- `src/features/code-view/components/StrudelEditor.tsx` — componente CodeMirror puro (sin lógica de store)
 
 El detalle de cada tarea está en `.claude/tasks/`. El índice maestro
 con dependencias y criterios de revisión está en `.claude/tasks/TASK-INDEX.md`.

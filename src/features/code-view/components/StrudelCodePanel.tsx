@@ -1,23 +1,51 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import { useEffect, useRef, useState } from 'react';
 import { useSessionStore } from '@store/sessionStore';
 import { parseStrudelToTrackJson, type UseStrudelResult } from '@features/audio';
+
+// CodeMirror touches document/window at init — must be client-only
+const StrudelEditor = dynamic(
+  () => import('./StrudelEditor').then((m) => m.StrudelEditor),
+  { ssr: false },
+);
 
 interface StrudelCodePanelProps {
   strudel: UseStrudelResult;
 }
 
 /**
- * Panel de código Strudel editable con sincronización bidireccional con el grid.
+ * Valida si el texto puede compilarse como JavaScript antes de invocar a Strudel.
+ * Evita mostrar errores tardíos del motor cuando el problema ya era sintáctico en el editor.
  *
- * Dirección Grid → Editor: cuando el LLM o el usuario modifica un paso,
- * `currentCode` cambia en el store y el editor se actualiza si no está enfocado.
+ * @param code - Código Strudel escrito por el usuario.
+ * @returns Mensaje de error de sintaxis o `null` cuando el texto es parseable.
+ * @see EC-006 El editor informa errores inline sin alterar el audio previo.
+ */
+function getSyntaxErrorMessage(code: string): string | null {
+  try {
+    // EC-006: evita evaluate cuando el código no es parseable por JS/Strudel.
+    // Strudel usa sintaxis basada en JavaScript, así que este guard es seguro.
+    // eslint-disable-next-line no-new-func
+    new Function(code);
+    return null;
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      return error.message;
+    }
+    return null;
+  }
+}
+
+/**
+ * Panel de código Strudel con editor CodeMirror 6 y sincronización bidireccional.
  *
- * Dirección Editor → Grid: los cambios del usuario se evalúan con un debounce de 600 ms;
- * si el código es parseable, el grid se actualiza; si no, el grid pasa a "modo código".
+ * Grid → Editor: cuando el LLM o el usuario modifica un paso, `currentCode` cambia
+ * en el store y el editor se actualiza si no está enfocado.
  *
- * @param strudel - Resultado de `useStrudel` — expone `play()` para evaluar el código.
+ * Editor → Grid: los cambios del usuario se evalúan con un debounce de 600 ms;
+ * si el código es parseable, el grid se actualiza; si no, se entra en "modo código".
  *
  * @see BR-009 Editor y grid sincronizados bidireccionalmente
  * @see EC-006 Código inválido → error inline no bloqueante, audio anterior intacto
@@ -28,13 +56,15 @@ export function StrudelCodePanel({ strudel }: StrudelCodePanelProps) {
   const isPlaying = useSessionStore((s) => s.isPlaying);
   const setManualCode = useSessionStore((s) => s.setManualCode);
   const syncCodePattern = useSessionStore((s) => s.syncCodePattern);
+
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const [localCode, setLocalCode] = useState(currentCode);
   const [codeError, setCodeError] = useState<string | null>(null);
   const [isFocused, setIsFocused] = useState(false);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // BR-009: sync editor from store when not focused (grid/LLM changed the code)
+  // BR-009: si el usuario no está escribiendo, reflejamos cambios externos del grid o del LLM.
   useEffect(() => {
     if (!isFocused) {
       setLocalCode(currentCode);
@@ -43,31 +73,46 @@ export function StrudelCodePanel({ strudel }: StrudelCodePanelProps) {
   }, [currentCode, isFocused]);
 
   /**
-   * Gestiona la edición manual del código Strudel.
-   *
-   * Aplica un debounce de 600 ms antes de evaluar para evitar evaluaciones en cada tecla.
-   * Si el código es válido y parseable, sincroniza el grid (BR-009).
-   * Si el código es válido pero no parseable, marca el grid como "modo código".
-   * Si el código es inválido, muestra un error inline sin interrumpir el audio (EC-006, BR-001).
+   * Recibe el código crudo del editor en cada tecla y aplica el debounce de 600 ms.
+   * Misma lógica que el textarea anterior — sólo el origen del evento cambió.
    *
    * @see BR-009 Cambio en editor → actualiza grid si el código es parseable
    * @see EC-006 Error de Strudel → informar sin romper el audio anterior
+   * @see BR-001 El audio nunca se interrumpe
    */
-  function handleChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
-    const newCode = e.target.value;
+  function handleEditorChange(newCode: string) {
     setLocalCode(newCode);
     setCodeError(null);
 
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
       try {
+        const syntaxError = getSyntaxErrorMessage(newCode);
+        if (syntaxError) {
+          setCodeError(`Error de sintaxis: ${syntaxError}`);
+          return;
+        }
+
         const parsedPattern = parseStrudelToTrackJson(newCode, tracks);
 
-        // BR-009 / EC-006: evaluar el código sin reiniciar el audio si está en pausa
+        // EC-010: con motor no funcional, el editor permanece editable pero no evalúa.
+        if (strudel.initError) {
+          setCodeError(strudel.initError);
+
+          if (parsedPattern) {
+            syncCodePattern(parsedPattern, newCode);
+            return;
+          }
+
+          setManualCode(newCode);
+          return;
+        }
+
+        // EC-006: evaluar el código; Strudel lanzará si la sintaxis es inválida
         await strudel.play(newCode, isPlaying);
 
         if (parsedPattern) {
-          // BR-009: código parseable → sincronizar el grid con los nuevos pasos
+          // BR-009: código parseable → sincronizar el grid
           syncCodePattern(parsedPattern, newCode);
           return;
         }
@@ -75,15 +120,13 @@ export function StrudelCodePanel({ strudel }: StrudelCodePanelProps) {
         // BR-009: código válido pero no parseable → marcar grid como "modo código"
         setManualCode(newCode);
       } catch (err) {
-        // EC-006: capturar error, informar al usuario, mantener el audio anterior (BR-001)
+        // EC-006: capturar error, informar, mantener el audio anterior (BR-001)
         setCodeError(err instanceof Error ? err.message : 'Error de sintaxis en el código');
       }
     }, 600);
   }
 
-  const lines = localCode.split('\n');
-  const rows = Math.max(3, lines.length);
-
+  // Visualización decorativa independiente del estado del editor.
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -116,45 +159,25 @@ export function StrudelCodePanel({ strudel }: StrudelCodePanelProps) {
 
   useEffect(() => {
     return () => {
-      if (debounceRef.current) {
-        clearTimeout(debounceRef.current);
-      }
+      if (debounceRef.current) clearTimeout(debounceRef.current);
     };
   }, []);
 
   return (
     <div className="flex h-full flex-col gap-4 overflow-y-auto px-5 py-5">
       <div className="flex flex-col gap-2">
+        {/* BR-009: editor cliente-only para no romper el SSR de Next.js. */}
         <div className="rounded-[8px] border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
-          <div className="flex">
-            {/* line numbers */}
-            <div
-              className="select-none px-3 py-3 text-right text-[12px] leading-6 font-medium text-[var(--text-muted)] border-r border-[var(--border)]"
-              aria-hidden="true"
-            >
-              {lines.map((_, i) => (
-                <div key={i}>{i + 1}</div>
-              ))}
-            </div>
-
-            {/* BR-009: editable textarea */}
-            <textarea
-              value={localCode}
-              rows={rows}
-              onChange={handleChange}
-              onFocus={() => setIsFocused(true)}
-              onBlur={() => setIsFocused(false)}
-              spellCheck={false}
-              autoCorrect="off"
-              autoCapitalize="off"
-              className="flex-1 resize-none overflow-hidden bg-transparent px-3 py-3 text-[12px] leading-6 font-medium text-[var(--text)] outline-none"
-              style={{ fontFamily: 'JetBrains Mono, monospace' }}
-              aria-label="Código Strudel editable"
-            />
-          </div>
+          <StrudelEditor
+            value={localCode}
+            onChange={handleEditorChange}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
+            ariaLabel="Código Strudel editable"
+          />
         </div>
 
-        {/* EC-006: inline error — non-blocking, disappears when code is valid again */}
+        {/* EC-006: error inline no bloqueante; desaparece cuando el código vuelve a ser válido. */}
         {codeError && (
           <div
             role="alert"

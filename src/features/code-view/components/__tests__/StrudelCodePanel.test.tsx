@@ -6,6 +6,30 @@ import { useSessionStore } from '@store/sessionStore'
 import type { UseStrudelResult } from '@features/audio'
 import { StrudelCodePanel } from '../StrudelCodePanel'
 
+vi.mock('next/dynamic', () => ({
+  default: () => {
+    function MockStrudelEditor(props: {
+      value: string
+      onChange: (code: string) => void
+      onFocus?: () => void
+      onBlur?: () => void
+      ariaLabel?: string
+    }) {
+      return (
+        <textarea
+          aria-label={props.ariaLabel ?? 'Código Strudel editable'}
+          value={props.value}
+          onChange={(event) => props.onChange(event.target.value)}
+          onFocus={props.onFocus}
+          onBlur={props.onBlur}
+        />
+      )
+    }
+
+    return MockStrudelEditor
+  },
+}))
+
 async function flushDebounce() {
   await act(async () => {
     await vi.advanceTimersByTimeAsync(600)
@@ -140,7 +164,7 @@ describe('StrudelCodePanel TASK-08 editable sync', () => {
     render(<StrudelCodePanel strudel={strudel} />)
 
     fireEvent.change(screen.getByLabelText('Código Strudel editable'), {
-      target: { value: 'broken(' },
+      target: { value: 'note("c")' },
     })
 
     await flushDebounce()
@@ -148,6 +172,50 @@ describe('StrudelCodePanel TASK-08 editable sync', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('parse error')
 
     expect(useSessionStore.getState().currentCode).toBe(initialCode)
+  })
+
+  it('does not call play when the editor code has syntax errors', async () => {
+    const initialCode = useSessionStore.getState().currentCode
+    const playSpy = vi.fn().mockResolvedValue(undefined)
+    const strudel = makeStrudel(playSpy)
+
+    render(<StrudelCodePanel strudel={strudel} />)
+
+    fireEvent.change(screen.getByLabelText('Código Strudel editable'), {
+      target: { value: 'stack(,)' },
+    })
+
+    await flushDebounce()
+
+    expect(playSpy).not.toHaveBeenCalled()
+    expect(screen.getByRole('alert')).toHaveTextContent('Error de sintaxis')
+    expect(useSessionStore.getState().currentCode).toBe(initialCode)
+  })
+
+  it('does not evaluate when initError is present and keeps editor updates local/store-synced', async () => {
+    const nextCode = compileToStrudel({
+      bpm: 144,
+      tracks: [makeTrack({ steps: [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0] })],
+    })
+    const playSpy = vi.fn().mockResolvedValue(undefined)
+    const strudel = {
+      ...makeStrudel(playSpy),
+      initError: 'Motor de audio no disponible',
+    }
+
+    render(<StrudelCodePanel strudel={strudel} />)
+
+    fireEvent.change(screen.getByLabelText('Código Strudel editable'), {
+      target: { value: nextCode },
+    })
+
+    await flushDebounce()
+
+    expect(playSpy).not.toHaveBeenCalled()
+
+    const state = useSessionStore.getState()
+    expect(state.currentCode).toBe(nextCode)
+    expect(state.isCodeManuallyEdited).toBe(false)
   })
 
   it('syncs editor content from the store when code changes externally', async () => {
@@ -194,7 +262,7 @@ describe('StrudelCodePanel TASK-08 editable sync', () => {
     const textarea = screen.getByLabelText('Código Strudel editable')
 
     fireEvent.change(textarea, {
-      target: { value: 'broken(' },
+      target: { value: 'note("d")' },
     })
 
     await flushDebounce()

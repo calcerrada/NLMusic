@@ -1,6 +1,8 @@
 ---
 id: TASK-10
-status: pending
+status: done
+completed_commit: pending-fill-after-commit
+completed_date: 2026-04-28
 ---
 
 # TASK-10 — Editor Strudel con CodeMirror 6 (syntax highlighting)

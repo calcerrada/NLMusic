@@ -103,7 +103,16 @@ export function useStrudel(): UseStrudelResult {
     if (!_evaluate) {
       throw new Error('Strudel no inicializado todavía');
     }
-    await _evaluate(code, autoplay);
+
+    try {
+      await _evaluate(code, autoplay);
+    } catch (error) {
+      // EC-006: normaliza errores del runtime para que el panel muestre feedback legible.
+      if (error instanceof Error) {
+        throw new Error(`Error evaluando Strudel: ${error.message}`);
+      }
+      throw new Error('Error evaluando Strudel');
+    }
   }, []);
 
   const stop = useCallback(() => {
