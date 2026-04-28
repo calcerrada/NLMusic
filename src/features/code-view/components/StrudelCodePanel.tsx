@@ -1,9 +1,10 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSessionStore } from '@store/sessionStore';
-import { parseStrudelToTrackJson, type UseStrudelResult } from '@features/audio';
+import { parseStrudelToTrackJson, type UseStrudelResult, useHapEvents } from '@features/audio';
+import type { StrudelEditorRef } from './StrudelEditor';
 
 // CodeMirror touches document/window at init — must be client-only
 const StrudelEditor = dynamic(
@@ -56,6 +57,13 @@ export function StrudelCodePanel({ strudel }: StrudelCodePanelProps) {
   const isPlaying = useSessionStore((s) => s.isPlaying);
   const setManualCode = useSessionStore((s) => s.setManualCode);
   const syncCodePattern = useSessionStore((s) => s.syncCodePattern);
+
+  // TASK-11: ref to the CodeMirror EditorView for hap highlighting
+  const editorRef = useRef<StrudelEditorRef>(null);
+  // Stable getter so useHapEvents doesn't re-run on every render
+  const getView = useCallback(() => editorRef.current?.view ?? null, []);
+  // BR-001: useHapEvents runs a RAF loop — purely visual, never affects audio timing
+  useHapEvents({ isPlaying, getView, getHapState: strudel.getHapState });
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -168,12 +176,15 @@ export function StrudelCodePanel({ strudel }: StrudelCodePanelProps) {
       <div className="flex flex-col gap-2">
         {/* BR-009: editor cliente-only para no romper el SSR de Next.js. */}
         <div className="rounded-[8px] border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
+          {/* TASK-11: ref exposes the EditorView for hap highlighting; enableHapHighlighting adds the StateFields */}
           <StrudelEditor
+            ref={editorRef}
             value={localCode}
             onChange={handleEditorChange}
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
             ariaLabel="Código Strudel editable"
+            enableHapHighlighting
           />
         </div>
 

@@ -12,6 +12,8 @@ const editorTheme = EditorView.theme(
       color: 'var(--text)',
       fontSize: '12px',
       fontFamily: "'JetBrains Mono', monospace",
+      // TASK-11: alias used by highlight.mjs as fallback hap outline color
+      '--foreground': 'var(--cyan)',
     },
     '.cm-scroller': {
       fontFamily: "'JetBrains Mono', monospace",

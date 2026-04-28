@@ -55,6 +55,8 @@ function makeStrudel(playImpl?: UseStrudelResult['play']): UseStrudelResult {
     stop: vi.fn(),
     isReady: true,
     initError: null,
+    // TASK-11: getHapState returns empty state in tests (no audio engine)
+    getHapState: () => ({ pattern: null, miniLocations: [], getTime: () => 0 }),
   }
 }
 

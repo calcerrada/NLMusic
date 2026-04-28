@@ -168,9 +168,37 @@ Scenario: Fallback degradado (si el API no está disponible)
 
 ## Hallazgos
 
-<!-- Rellenar tras el paso 1 (investigación previa) antes de implementar -->
+### API exacta de `@strudel/codemirror`
 
-- API exacta de `@strudel/codemirror`: _pendiente_
-- Compatibilidad con `@strudel/web@1.3.0`: _pendiente_
-- ¿Hace falta upgrade?: _pendiente_
-- Decisión sobre fallback degradado: _pendiente_
+`@strudel/codemirror` (v1.3.0) expone en `highlight.mjs`:
+
+- **`highlightExtension`** — array de tres `StateField`s de CodeMirror que deben incluirse en el `EditorState` al crear el editor: `miniLocations` (marcas estáticas de todos los rangos posibles), `visibleMiniLocations` (haps activos en el frame actual), y `miniLocationHighlights` (derivación de decoraciones visibles).
+- **`updateMiniLocations(view, [[start, end], ...])`** — fija las marcas estáticas en el editor. Debe llamarse una vez tras cada `evaluate()` pasando los `miniLocations` del transpilador.
+- **`highlightMiniLocations(view, atTime, haps)`** — despacha los haps activos al campo `visibleMiniLocations`. Se llama cada frame de animación. Los haps necesitan `hap.context.locations` (array `{ start, end }`) y `hap.whole` para hacer match contra las marcas estáticas.
+- **`flash(view, ms)`** / **`flashField`** — flash de todo el editor; no usado (demasiado coarse-grained).
+
+Las decoraciones usan `hap.value?.markcss` como estilo inline, con fallback a `outline: solid 2px ${hap.value?.color ?? 'var(--foreground)'}`. Se añade `--foreground: var(--cyan)` al tema del editor para que el color por defecto sea el acento principal del design system.
+
+### Compatibilidad con `@strudel/web@1.3.0`
+
+- `@strudel/web` re-exporta `getTime` de `@strudel/core` vía `export * from '@strudel/core'`. Tras `initStrudel()`, `getTime()` devuelve `repl.scheduler.now()` en ciclos — la misma unidad que usa `Pattern.queryArc(begin, end)`.
+- La función `evaluate(code, autoplay)` de `@strudel/web` retorna el `Pattern` directamente (confirmado leyendo el core de `Dy.evaluate`).
+- **No se expone `repl.scheduler` ni `afterEval`**; se accede al patrón vía el valor de retorno de `evaluate` y al tiempo vía `getTime()`.
+
+### Obtención de `miniLocations`
+
+Se importa `@strudel/transpiler` en paralelo con `@strudel/web`. La función `transpiler(code)` devuelve `{ output, miniLocations: [number, number][] }` con `emitMiniLocations: true` por defecto. Se llama una vez por cada `play(code)` para obtener los rangos de caracteres de cada token de mini notation. La llamada es síncrona y de duración <1ms para patrones típicos.
+
+### Decisión: Ruta principal (no degradada)
+
+✅ **Ruta A — Highlighting completo per-token:**
+- `highlightExtension` añadido al editor desde la creación
+- `updateMiniLocations` llamado tras cada `evaluate`
+- RAF loop con `pattern.queryArc(begin, t).filter(h => h.hasOnset())`
+- El estilo inline usa `markcss: 'background-color:rgba(0,255,200,0.18)'`
+
+No hace falta upgrade de `@strudel/web` — la v1.3.0 ya expone todo lo necesario.
+
+### Fallback degradado
+
+Se implementa automáticamente: si `getTime()` o `pattern.queryArc` fallan, el bloque try/catch silencia el error y el editor queda sin decoraciones (sin crash, sin ruido en consola). El fallback explícito con `useBeatClock` (resaltar el paso global) NO se implementa en v1 porque la ruta principal funciona.

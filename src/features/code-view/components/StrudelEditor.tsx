@@ -6,7 +6,7 @@ import { EditorState, Compartment } from '@codemirror/state';
 import { lineNumbers, keymap } from '@codemirror/view';
 import { defaultKeymap, indentWithTab } from '@codemirror/commands';
 import { javascript } from '@codemirror/lang-javascript';
-import { extensions as strudelExtensions } from '@strudel/codemirror';
+import { extensions as strudelExtensions, highlightExtension } from '@strudel/codemirror';
 import { nlmusicTheme } from '../theme/nlmusicTheme';
 
 /**
@@ -24,6 +24,12 @@ interface StrudelEditorProps {
   onBlur?: () => void;
   disabled?: boolean;
   ariaLabel?: string;
+  /**
+   * TASK-11: include the highlightExtension StateFields in the editor.
+   * Must be true for useHapEvents to dispatch decorations; defaults to true.
+   * The extension is inert (no visual effect) when no haps are dispatched.
+   */
+  enableHapHighlighting?: boolean;
 }
 
 /**
@@ -40,7 +46,7 @@ interface StrudelEditorProps {
  * @see BR-009 La sincronización bidireccional depende de distinguir edición local de updates externos.
  */
 export const StrudelEditor = forwardRef<StrudelEditorRef, StrudelEditorProps>(
-  ({ value, onChange, onFocus, onBlur, disabled = false, ariaLabel }, ref) => {
+  ({ value, onChange, onFocus, onBlur, disabled = false, ariaLabel, enableHapHighlighting = true }, ref) => {
     const containerRef = useRef<HTMLDivElement | null>(null);
     const viewRef = useRef<EditorView | null>(null);
     // BR-009: evita bucles cuando el padre reinyecta código desde grid o LLM.
@@ -74,6 +80,8 @@ export const StrudelEditor = forwardRef<StrudelEditorRef, StrudelEditorProps>(
             ...nlmusicTheme,
             strudelExtensions.isBracketMatchingEnabled(true),
             strudelExtensions.isBracketClosingEnabled(true),
+            // TASK-11: StateFields for hap highlighting; inert when no haps are dispatched
+            ...(enableHapHighlighting ? highlightExtension : []),
             editableCompartment.current.of(EditorView.editable.of(!disabled)),
             ...(ariaLabel
               ? [EditorView.contentAttributes.of({ 'aria-label': ariaLabel })]
