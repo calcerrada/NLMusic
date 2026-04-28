@@ -3,7 +3,12 @@
 import dynamic from 'next/dynamic';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSessionStore } from '@store/sessionStore';
-import { parseStrudelToTrackJson, type UseStrudelResult, useHapEvents } from '@features/audio';
+import {
+  parseStrudelToTrackJson,
+  type UseStrudelResult,
+  useBeatClock,
+  useHapEvents,
+} from '@features/audio';
 import type { StrudelEditorRef } from './StrudelEditor';
 
 // CodeMirror touches document/window at init — must be client-only
@@ -55,6 +60,7 @@ export function StrudelCodePanel({ strudel }: StrudelCodePanelProps) {
   const currentCode = useSessionStore((s) => s.currentCode);
   const tracks = useSessionStore((s) => s.tracks);
   const isPlaying = useSessionStore((s) => s.isPlaying);
+  const { step: transportStep } = useBeatClock();
   const setManualCode = useSessionStore((s) => s.setManualCode);
   const syncCodePattern = useSessionStore((s) => s.syncCodePattern);
 
@@ -63,7 +69,13 @@ export function StrudelCodePanel({ strudel }: StrudelCodePanelProps) {
   // Stable getter so useHapEvents doesn't re-run on every render
   const getView = useCallback(() => editorRef.current?.view ?? null, []);
   // BR-001: useHapEvents runs a RAF loop — purely visual, never affects audio timing
-  useHapEvents({ isPlaying, getView, getHapState: strudel.getHapState });
+  // TASK-11 degraded mode: fallbackStep keeps minimal visual feedback if hap API is unavailable.
+  useHapEvents({
+    isPlaying,
+    fallbackStep: transportStep,
+    getView,
+    getHapState: strudel.getHapState,
+  });
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);

@@ -6,22 +6,6 @@
 import type { Extension } from '@codemirror/state';
 import type { EditorView } from '@codemirror/view';
 
-declare module '@strudel/transpiler' {
-  export function transpiler(
-    code: string,
-    options?: {
-      wrapAsync?: boolean;
-      addReturn?: boolean;
-      emitMiniLocations?: boolean;
-      emitWidgets?: boolean;
-    },
-  ): {
-    output: string;
-    miniLocations: [number, number][];
-    widgets: unknown[];
-  };
-}
-
 declare module '@strudel/codemirror' {
   // ---- extension builders (codemirror.mjs) ----
   export const extensions: {

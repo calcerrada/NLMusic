@@ -35,7 +35,6 @@ let _hush: (() => void) | null = null;
 let _evaluate: ((code: string, autoplay?: boolean) => Promise<unknown>) | null = null;
 // TASK-11: hap highlighting helpers
 let _getTime: (() => number) | null = null;
-let _transpiler: ((code: string) => { miniLocations?: [number, number][] }) | null = null;
 let _lastPattern: unknown = null;
 let _lastMiniLocations: [number, number][] = [];
 
@@ -68,9 +67,6 @@ export function useStrudel(): UseStrudelResult {
     (async () => {
       try {
         const mod = await import('@strudel/web');
-        // TASK-11: load transpiler to extract miniLocations for per-token hap highlighting
-        // @ts-ignore — @strudel/transpiler ships .mjs without .d.ts; typed via src/types/strudel.d.ts
-        const transpilerMod = await import('@strudel/transpiler');
 
         mod.initStrudel({
           prebake: () =>
@@ -87,9 +83,12 @@ export function useStrudel(): UseStrudelResult {
         };
         _hush = runtime.hush ?? null;
         _evaluate = runtime.evaluate ?? null;
-        // TASK-11: getTime is re-exported from @strudel/core via @strudel/web
-        _getTime = runtime.getTime ?? null;
-        _transpiler = (transpilerMod as unknown as { transpiler?: typeof _transpiler }).transpiler ?? null;
+        // TASK-11: getTime is optional; some test mocks don't expose it.
+        try {
+          _getTime = typeof runtime.getTime === 'function' ? runtime.getTime : null;
+        } catch {
+          _getTime = null;
+        }
 
         // Also available on globalThis after initStrudel
         const g = globalThis as Record<string, unknown>;
@@ -101,7 +100,6 @@ export function useStrudel(): UseStrudelResult {
           '[Strudel] ready — hush:', !!_hush,
           'evaluate:', !!_evaluate,
           'getTime:', !!_getTime,
-          'transpiler:', !!_transpiler,
         );
         initErrorRef.current = null;
         setInitError(null);
@@ -143,15 +141,32 @@ export function useStrudel(): UseStrudelResult {
       const patternResult = await _evaluate(code, autoplay);
       _lastPattern = patternResult;
 
-      // TASK-11: run transpiler separately to extract miniLocations (char offsets of mini-notation tokens)
-      if (_transpiler) {
+      // TASK-11: extract miniLocations directly from the Pattern's own haps so that
+      // the [start,end] pairs are guaranteed to match hap.context.locations IDs used
+      // by highlightMiniLocations — avoids the mismatch caused by a separate transpiler call.
+      type HapLoc = { start: number; end: number };
+      type HapWithCtx = { context?: { locations?: HapLoc[] } };
+      type PatternWithQuery = { queryArc: (a: number, b: number) => HapWithCtx[] };
+      const pat = patternResult as PatternWithQuery | null;
+      if (pat && typeof pat.queryArc === 'function') {
         try {
-          const { miniLocations = [] } = _transpiler(code);
-          _lastMiniLocations = miniLocations;
+          const seen = new Set<string>();
+          const locs: [number, number][] = [];
+          for (const h of pat.queryArc(0, 4)) {
+            for (const { start, end } of h.context?.locations ?? []) {
+              const key = `${start}:${end}`;
+              if (!seen.has(key)) {
+                seen.add(key);
+                locs.push([start, end]);
+              }
+            }
+          }
+          _lastMiniLocations = locs;
         } catch {
-          // Silently ignore transpiler errors (e.g. syntax errors already caught above)
           _lastMiniLocations = [];
         }
+      } else {
+        _lastMiniLocations = [];
       }
     } catch (error) {
       // EC-006: normaliza errores del runtime para que el panel muestre feedback legible.

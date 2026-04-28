@@ -2,12 +2,26 @@
 
 import { useEffect, useRef } from 'react';
 import type { EditorView } from '@codemirror/view';
-import { highlightMiniLocations, updateMiniLocations } from '@strudel/codemirror';
 import type { HapState } from './useStrudel';
+
+const HAP_FLASH_STYLE =
+  'background-color:rgba(0,255,200,0.18);border-radius:2px;' +
+  'transition:background-color 150ms ease-out;';
+const MAX_ACTIVE_HAPS = 64;
+
+type HighlightApi = {
+  updateMiniLocations: (view: EditorView, locations: [number, number][]) => void;
+  highlightMiniLocations: (view: EditorView, atTime: number, haps: unknown[]) => void;
+};
 
 interface UseHapEventsProps {
   /** Whether the transport is currently playing; controls the RAF loop lifecycle. */
   isPlaying: boolean;
+  /**
+   * Global 0..15 step from the transport clock.
+   * Used as degraded fallback when Strudel hap APIs are unavailable.
+   */
+  fallbackStep: number;
   /**
    * Stable getter returning the current EditorView (or null if not yet mounted).
    * Use `() => editorRef.current?.view ?? null` — avoids triggering re-runs on each render.
@@ -34,13 +48,82 @@ interface UseHapEventsProps {
  * @see BR-009 Marks track the actual code via miniLocations from the transpiler.
  * @see EC-006 All errors inside the loop are silenced to never break the editor.
  */
-export function useHapEvents({ isPlaying, getView, getHapState }: UseHapEventsProps) {
+export function useHapEvents({ isPlaying, fallbackStep, getView, getHapState }: UseHapEventsProps) {
   const rafRef = useRef<number | null>(null);
   const lastTimeRef = useRef<number | null>(null);
   // Track the miniLocations array reference to avoid redundant updateMiniLocations calls
   const lastMiniLocsRef = useRef<[number, number][] | null>(null);
+  const highlightApiRef = useRef<HighlightApi | null>(null);
 
   useEffect(() => {
+    const ensureHighlightApi = async () => {
+      if (highlightApiRef.current) {
+        return highlightApiRef.current;
+      }
+      try {
+        const mod = await import('@strudel/codemirror');
+        highlightApiRef.current = {
+          updateMiniLocations: mod.updateMiniLocations,
+          highlightMiniLocations: mod.highlightMiniLocations,
+        };
+      } catch {
+        // EC-006/TASK-11 degraded mode: missing codemirror bridge should not crash tests/runtime.
+        highlightApiRef.current = null;
+      }
+      return highlightApiRef.current;
+    };
+
+    const clearHighlights = (view: EditorView | null) => {
+      if (!view) {
+        return;
+      }
+      const api = highlightApiRef.current;
+      if (!api) {
+        return;
+      }
+      try {
+        api.highlightMiniLocations(view, 0, []);
+      } catch {
+        // View may be destroyed; ignore dispatch errors
+      }
+    };
+
+    const applyDegradedStepHighlight = (
+      view: EditorView,
+      miniLocations: [number, number][],
+      step: number,
+    ) => {
+      const api = highlightApiRef.current;
+      if (!api) {
+        return;
+      }
+      if (miniLocations.length === 0) {
+        clearHighlights(view);
+        return;
+      }
+
+      // Degraded mode: highlight one token mapped from the global 0..15 transport step.
+      const index = ((step % 16) + 16) % 16;
+      const loc = miniLocations[index % miniLocations.length];
+      const [start, end] = loc;
+
+      const pseudoHap = {
+        context: {
+          locations: [{ start, end }],
+        },
+        // highlight.mjs only needs begin.lt when two haps share the same id.
+        // One pseudo hap is dispatched per frame, so this comparator is never used.
+        whole: {
+          begin: { lt: () => false },
+        },
+        value: {
+          markcss: HAP_FLASH_STYLE,
+        },
+      };
+
+      api.highlightMiniLocations(view, 0, [pseudoHap]);
+    };
+
     const cancelLoop = () => {
       if (rafRef.current !== null) {
         cancelAnimationFrame(rafRef.current);
@@ -53,71 +136,87 @@ export function useHapEvents({ isPlaying, getView, getHapState }: UseHapEventsPr
     if (!isPlaying) {
       cancelLoop();
       // Clear all hap decorations when playback stops — BR-009 / PAUSED state
-      const view = getView();
-      if (view) {
-        try {
-          highlightMiniLocations(view, 0, []);
-        } catch {
-          // View may be destroyed; ignore dispatch errors
-        }
-      }
+      clearHighlights(getView());
       return;
     }
+
+    void ensureHighlightApi();
 
     const animate = () => {
       const view = getView();
       const { pattern, miniLocations, getTime } = getHapState();
+      const api = highlightApiRef.current;
 
-      if (!view || !pattern) {
-        // Editor not yet mounted or pattern cleared (stop); keep looping until mounted
+      if (!view) {
+        // Editor not yet mounted; keep looping until mounted
         rafRef.current = requestAnimationFrame(animate);
         return;
       }
 
       // Update static mark positions when miniLocations change (new evaluate / code edit)
       // Identity check is enough because _lastMiniLocations is replaced by reference on each evaluate.
-      if (miniLocations !== lastMiniLocsRef.current) {
+      if (api && miniLocations !== lastMiniLocsRef.current) {
         try {
-          updateMiniLocations(view, miniLocations);
+          api.updateMiniLocations(view, miniLocations);
         } catch {
           // Ignore — editor may be in a transitional state
         }
         lastMiniLocsRef.current = miniLocations;
       }
 
+      const pat = pattern as { queryArc?: (a: number, b: number) => HapLike[] } | null;
+      const queryArc = pat?.queryArc;
+
+      if (typeof queryArc !== 'function') {
+        // TASK-11 degraded mode: no hap API, keep a minimal visual cue using transport step.
+        try {
+          applyDegradedStepHighlight(view, miniLocations, fallbackStep);
+        } catch {
+          clearHighlights(view);
+        }
+        rafRef.current = requestAnimationFrame(animate);
+        return;
+      }
+
       const t = getTime();
+      if (!Number.isFinite(t)) {
+        try {
+          applyDegradedStepHighlight(view, miniLocations, fallbackStep);
+        } catch {
+          clearHighlights(view);
+        }
+        rafRef.current = requestAnimationFrame(animate);
+        return;
+      }
+
       // Small lookbehind window (0.1 cycles) to catch haps whose onset just fired.
       // Matches the Drawer convention from @strudel/draw.
       const begin = Math.max(lastTimeRef.current ?? t - 0.01, t - 0.1);
       lastTimeRef.current = t;
 
       try {
-        type HapLike = {
-          hasOnset: () => boolean;
-          value?: Record<string, unknown>;
-          context?: { locations?: unknown[] };
-          whole?: unknown;
-        };
-        const pat = pattern as { queryArc: (a: number, b: number) => HapLike[] };
-        const haps = pat.queryArc(begin, t).filter((h) => h.hasOnset());
+        const haps = queryArc(begin, t).filter((h) => h.hasOnset());
 
-        // Apply NLMusic design-system style to each hap decoration.
-        // markcss takes priority over color in highlight.mjs so the background flash
-        // is always the cyan accent regardless of the hap's own color.
-        const styledHaps = haps.map((h) => ({
+        // BR-001: cap decorations per frame to keep editor FPS stable in dense patterns.
+        const styledHaps = haps.slice(0, MAX_ACTIVE_HAPS).map((h) => ({
           ...h,
           value: {
             ...(h.value ?? {}),
             // TASK-11: 150ms background flash — see nlmusicTheme.ts for --foreground alias
-            markcss:
-              'background-color:rgba(0,255,200,0.18);border-radius:2px;' +
-              'transition:background-color 150ms ease-out;',
+            markcss: HAP_FLASH_STYLE,
           },
         }));
 
-        highlightMiniLocations(view, t, styledHaps);
+        if (api) {
+          api.highlightMiniLocations(view, t, styledHaps);
+        }
       } catch {
-        // EC-006: silently ignore runtime errors — audio and editor continue unaffected
+        // EC-006: if scheduler data fails, degrade to global-step highlight without crashing.
+        try {
+          applyDegradedStepHighlight(view, miniLocations, fallbackStep);
+        } catch {
+          clearHighlights(view);
+        }
       }
 
       rafRef.current = requestAnimationFrame(animate);
@@ -127,6 +226,13 @@ export function useHapEvents({ isPlaying, getView, getHapState }: UseHapEventsPr
 
     return cancelLoop;
     // getView and getHapState are stable references (useCallback with []) — excluded from deps.
-    // isPlaying is the only signal that restarts/stops the loop.
-  }, [isPlaying, getView, getHapState]);
+    // isPlaying/fallbackStep drive runtime behavior without touching audio state.
+  }, [isPlaying, fallbackStep, getView, getHapState]);
 }
+
+type HapLike = {
+  hasOnset: () => boolean;
+  value?: Record<string, unknown>;
+  context?: { locations?: unknown[] };
+  whole?: unknown;
+};
