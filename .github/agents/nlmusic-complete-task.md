@@ -20,6 +20,15 @@ Si alguna verificación falla, NO cierres la tarea ni hagas commit hasta resolve
 
 ## Protocolo obligatorio
 
+### Precondicion de cierre (gate obligatorio)
+
+Antes de cerrar la task, verifica:
+1. Resultado de `nlmusic-reviewer` sin issues BLOQUEANTES abiertos
+2. Resultado de `nlmusic-tester` con evidencia de ejecucion reciente (o bloqueos reportados y resueltos)
+
+Si no se cumple, detener proceso y devolver:
+`TASK-XX NOT CLOSED`
+
 ### Paso 1 - Carga de contexto base
 
 Lee SIEMPRE antes de actuar:
@@ -118,7 +127,8 @@ Devuelve un informe breve con:
 2. Tests ejecutados y resultado
 3. Archivos de tracking actualizados
 4. Commit(s) creado(s) con hash
-5. Veredicto final:
+5. Estado de precondicion reviewer/tester: cumplida o no cumplida
+6. Veredicto final:
 - `TASK-XX CLOSED` si todo quedó consistente
 - `TASK-XX NOT CLOSED` si queda algún bloqueo
 
