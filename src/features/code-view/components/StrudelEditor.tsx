@@ -6,7 +6,11 @@ import { EditorState, Compartment } from '@codemirror/state';
 import { lineNumbers, keymap } from '@codemirror/view';
 import { defaultKeymap, indentWithTab } from '@codemirror/commands';
 import { javascript } from '@codemirror/lang-javascript';
-import { extensions as strudelExtensions, highlightExtension } from '@strudel/codemirror';
+import { extensions as strudelExtensions } from '@strudel/codemirror';
+// IMPORTANTE: highlightExtension viene del wrapper que también usa useHapEvents,
+// para garantizar que los `StateField`/`StateEffect` registrados aquí son los mismos
+// que los que despachan los effects desde el RAF loop.
+import { highlightExtension } from '@lib/strudelHighlight';
 import { nlmusicTheme } from '../theme/nlmusicTheme';
 
 /**

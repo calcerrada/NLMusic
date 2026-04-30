@@ -189,16 +189,22 @@ Las decoraciones usan `hap.value?.markcss` como estilo inline, con fallback a `o
 
 Se importa `@strudel/transpiler` en paralelo con `@strudel/web`. La función `transpiler(code)` devuelve `{ output, miniLocations: [number, number][] }` con `emitMiniLocations: true` por defecto. Se llama una vez por cada `play(code)` para obtener los rangos de caracteres de cada token de mini notation. La llamada es síncrona y de duración <1ms para patrones típicos.
 
-### Decisión: Ruta principal (no degradada)
+### Estado actual (actualizado 2026-04-29)
 
-✅ **Ruta A — Highlighting completo per-token:**
-- `highlightExtension` añadido al editor desde la creación
-- `updateMiniLocations` llamado tras cada `evaluate`
-- RAF loop con `pattern.queryArc(begin, t).filter(h => h.hasOnset())`
-- El estilo inline usa `markcss: 'background-color:rgba(0,255,200,0.18)'`
+✅ Implementación técnica completada en código:
 
-No hace falta upgrade de `@strudel/web` — la v1.3.0 ya expone todo lo necesario.
+- Integración de `highlightExtension` en el editor CodeMirror.
+- Pipeline de haps desde `useStrudel` hacia `useHapEvents` con loop RAF no intrusivo.
+- Decoración por token activa con límite de carga (`MAX_ACTIVE_HAPS`) y fallback degradado seguro.
+- Wrapper único `@lib/strudelHighlight` para evitar desincronización de `StateEffect` por doble instancia del módulo.
 
-### Fallback degradado
+✅ Verificación reciente:
 
-Se implementa automáticamente: si `getTime()` o `pattern.queryArc` fallan, el bloque try/catch silencia el error y el editor queda sin decoraciones (sin crash, sin ruido en consola). El fallback explícito con `useBeatClock` (resaltar el paso global) NO se implementa en v1 porque la ruta principal funciona.
+- Tests focalizados TASK-11 (`useHapEvents`, `useStrudel`) en `vitest --pool=forks`: OK.
+- Test de integración del panel (`StrudelCodePanel`): OK.
+- Build de producción (`npm run build`): OK.
+- Lint (`npm run lint`): sin errores (warnings preexistentes fuera del alcance de TASK-11).
+
+Decisión de tracking:
+
+- **TASK-11 se mantiene en `pending` por decisión explícita de tracking**, aunque la implementación y validaciones técnicas estén realizadas.

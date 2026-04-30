@@ -8,7 +8,10 @@ import { useHapEvents } from '../useHapEvents';
 const updateMiniLocationsMock = vi.fn();
 const highlightMiniLocationsMock = vi.fn();
 
-vi.mock('@strudel/codemirror', () => ({
+// El hook importa la API a través del wrapper local — mockear esa ruta evita
+// arrastrar `@strudel/codemirror` (y su repl pesado) en el entorno de tests.
+vi.mock('@lib/strudelHighlight', () => ({
+  highlightExtension: [],
   updateMiniLocations: (...args: unknown[]) => updateMiniLocationsMock(...args),
   highlightMiniLocations: (...args: unknown[]) => highlightMiniLocationsMock(...args),
 }));
@@ -64,10 +67,16 @@ describe('useHapEvents', () => {
 
   it('highlights active haps and caps decorations to 64 per frame (BR-001)', async () => {
     const view = {} as EditorView;
+    // Mocks que cumplen el contrato real de Hap usado por el sliding window:
+    // hasOnset (incluido en la ventana), isActive (filtro del frame actual),
+    // whole + endClipped (filtro de expiración entre frames).
     const queryArc = vi.fn(() =>
       Array.from({ length: 70 }, (_, i) => ({
         id: i,
         hasOnset: () => true,
+        isActive: () => true,
+        whole: { begin: 0, end: 1 },
+        endClipped: 5,
         value: { color: 'cyan' },
         context: { locations: [{ start: i, end: i + 1 }] },
       })),
@@ -110,7 +119,7 @@ describe('useHapEvents', () => {
     expect(highlightView).toBe(view);
     expect(atTime).toBe(4);
     expect(styledHaps).toHaveLength(64);
-    expect(styledHaps[0].value?.markcss).toContain('background-color:rgba(0,255,200,0.18)');
+    expect(styledHaps[0].value?.markcss).toContain('outline:solid 2px var(--cyan)');
   });
 
   it('does not re-run updateMiniLocations when miniLocations reference is unchanged', async () => {
@@ -219,6 +228,57 @@ describe('useHapEvents', () => {
 
     expect(atTime).toBe(0);
     expect(haps[0].context?.locations?.[0]).toEqual({ start: 3, end: 4 });
+  });
+
+  it('falls back to cycle-step highlighting when the scheduler window has no active haps', async () => {
+    const view = {} as EditorView;
+    const queryArc = vi.fn((begin: number, end: number) => {
+      if (begin === 0 && end === 1) {
+        return [
+          {
+            hasOnset: () => true,
+            isActive: () => false,
+            whole: { begin: 0.25, end: 0.3125 },
+            endClipped: 0.3125,
+            value: { color: 'cyan' },
+            context: { locations: [{ start: 10, end: 12 }] },
+          },
+        ];
+      }
+      return [];
+    });
+
+    const hapState = makeHapState({
+      pattern: { queryArc },
+      miniLocations: [[10, 12]],
+      getTime: () => 98,
+    });
+
+    renderHook(() =>
+      useHapEvents({
+        isPlaying: true,
+        fallbackStep: 4,
+        getView: () => view,
+        getHapState: () => hapState,
+      }),
+    );
+
+    await flushMicrotasks();
+
+    await act(async () => {
+      runNextFrame(16);
+    });
+
+    const [, atTime, haps] = highlightMiniLocationsMock.mock.calls[0] as [
+      EditorView,
+      number,
+      Array<{ context?: { locations?: Array<{ start: number; end: number }> }; value?: { markcss?: string } }>,
+    ];
+
+    expect(atTime).toBe(0.25);
+    expect(haps).toHaveLength(1);
+    expect(haps[0].context?.locations?.[0]).toEqual({ start: 10, end: 12 });
+    expect(haps[0].value?.markcss).toContain('outline:solid 2px var(--cyan)');
   });
 
   it('clears highlights when playback stops (PAUSED)', async () => {

@@ -33,7 +33,6 @@ function getSyntaxErrorMessage(code: string): string | null {
   try {
     // EC-006: evita evaluate cuando el código no es parseable por JS/Strudel.
     // Strudel usa sintaxis basada en JavaScript, así que este guard es seguro.
-    // eslint-disable-next-line no-new-func
     new Function(code);
     return null;
   } catch (error) {
@@ -70,6 +69,7 @@ export function StrudelCodePanel({ strudel }: StrudelCodePanelProps) {
   const getView = useCallback(() => editorRef.current?.view ?? null, []);
   // BR-001: useHapEvents runs a RAF loop — purely visual, never affects audio timing
   // TASK-11 degraded mode: fallbackStep keeps minimal visual feedback if hap API is unavailable.
+  // BR-009: el panel conecta el clock visual y el EditorView sin mover estado efímero al store global.
   useHapEvents({
     isPlaying,
     fallbackStep: transportStep,
@@ -146,7 +146,10 @@ export function StrudelCodePanel({ strudel }: StrudelCodePanelProps) {
     }, 600);
   }
 
-  // Visualización decorativa independiente del estado del editor.
+  /**
+   * Osciloscopio decorativo desacoplado del highlighting y del transporte.
+   * Vive en un RAF propio para no mezclar concerns visuales con la edición del código.
+   */
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;

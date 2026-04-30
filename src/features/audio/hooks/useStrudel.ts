@@ -29,10 +29,21 @@ export interface UseStrudelResult {
   getHapState: () => HapState;
 }
 
+interface StrudelRuntimeState {
+  miniLocations?: [number, number][];
+  pattern?: unknown;
+}
+
+type InitStrudelWithState = (options: {
+  prebake?: () => void;
+  onUpdateState?: (state: StrudelRuntimeState) => void;
+}) => void;
+
 // References captured from the dynamic import of @strudel/web.
 // Module-level to survive re-renders without re-initialising Strudel.
 let _hush: (() => void) | null = null;
 let _evaluate: ((code: string, autoplay?: boolean) => Promise<unknown>) | null = null;
+let _transpiler: ((code: string) => { miniLocations?: [number, number][] } | null | undefined) | null = null;
 // TASK-11: hap highlighting helpers
 let _getTime: (() => number) | null = null;
 let _lastPattern: unknown = null;
@@ -66,14 +77,28 @@ export function useStrudel(): UseStrudelResult {
 
     (async () => {
       try {
-        const mod = await import('@strudel/web');
+        const [mod, transpilerRuntime] = await Promise.all([
+          import('@strudel/web'),
+          import('@strudel/transpiler'),
+        ]);
 
-        mod.initStrudel({
+        (mod.initStrudel as InitStrudelWithState)({
           prebake: () =>
             (globalThis as { samples?: (source: string) => void }).samples?.(
               'github:tidalcycles/dirt-samples',
             ),
+          onUpdateState: (state: StrudelRuntimeState) => {
+            _lastMiniLocations = state.miniLocations ?? [];
+            if (state.pattern !== undefined) {
+              _lastPattern = state.pattern;
+            }
+          },
         });
+
+        _transpiler =
+          typeof transpilerRuntime.transpiler === 'function'
+            ? transpilerRuntime.transpiler
+            : null;
 
         // hush & evaluate are runtime exports not in the .d.ts types
         const runtime = mod as unknown as {
@@ -95,10 +120,14 @@ export function useStrudel(): UseStrudelResult {
         if (!_hush && typeof g.hush === 'function') _hush = g.hush as () => void;
         if (!_evaluate && typeof g.evaluate === 'function')
           _evaluate = g.evaluate as (code: string, autoplay?: boolean) => Promise<unknown>;
+        if (!_getTime && typeof g.getTime === 'function') {
+          _getTime = g.getTime as () => number;
+        }
 
         console.log(
           '[Strudel] ready — hush:', !!_hush,
           'evaluate:', !!_evaluate,
+          'transpiler:', !!_transpiler,
           'getTime:', !!_getTime,
         );
         initErrorRef.current = null;
@@ -141,30 +170,10 @@ export function useStrudel(): UseStrudelResult {
       const patternResult = await _evaluate(code, autoplay);
       _lastPattern = patternResult;
 
-      // TASK-11: extract miniLocations directly from the Pattern's own haps so that
-      // the [start,end] pairs are guaranteed to match hap.context.locations IDs used
-      // by highlightMiniLocations — avoids the mismatch caused by a separate transpiler call.
-      type HapLoc = { start: number; end: number };
-      type HapWithCtx = { context?: { locations?: HapLoc[] } };
-      type PatternWithQuery = { queryArc: (a: number, b: number) => HapWithCtx[] };
-      const pat = patternResult as PatternWithQuery | null;
-      if (pat && typeof pat.queryArc === 'function') {
-        try {
-          const seen = new Set<string>();
-          const locs: [number, number][] = [];
-          for (const h of pat.queryArc(0, 4)) {
-            for (const { start, end } of h.context?.locations ?? []) {
-              const key = `${start}:${end}`;
-              if (!seen.has(key)) {
-                seen.add(key);
-                locs.push([start, end]);
-              }
-            }
-          }
-          _lastMiniLocations = locs;
-        } catch {
-          _lastMiniLocations = [];
-        }
+      // TASK-11: derive token-level miniLocations from transpiler output.
+      if (_transpiler) {
+        const out = _transpiler(code);
+        _lastMiniLocations = out?.miniLocations ?? [];
       } else {
         _lastMiniLocations = [];
       }

@@ -9,6 +9,12 @@ interface BeatClockState {
   isPlaying: boolean;
 }
 
+/**
+ * Reloj visual derivado del BPM persistido para sincronizar indicadores de UI.
+ * No consulta el scheduler real de Strudel; sirve como respaldo estable cuando solo hace falta una referencia global de compás.
+ * @see BR-001
+ * @see BR-009
+ */
 export function useBeatClock(): BeatClockState {
   const bpm = useSessionStore((s) => s.bpm);
   const isPlaying = useSessionStore((s) => s.isPlaying);

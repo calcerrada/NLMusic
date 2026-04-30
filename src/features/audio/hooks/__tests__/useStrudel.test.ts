@@ -6,6 +6,7 @@ import { renderHook, waitFor } from '@testing-library/react'
 const stubbedInitStrudel = vi.fn()
 const stubbedHush = vi.fn()
 const stubbedEvaluate = vi.fn().mockResolvedValue(undefined)
+const stubbedTranspiler = vi.fn(() => ({ miniLocations: [] as [number, number][] }))
 
 // useStrudel uses module-level _hush/_evaluate singletons.
 // We must reset modules between tests that need a clean slate,
@@ -20,6 +21,9 @@ async function freshUseStrudel() {
     hush: (...args: unknown[]) => stubbedHush(...args),
     evaluate: (...args: unknown[]) => stubbedEvaluate(...args),
   }))
+  vi.doMock('@strudel/transpiler', () => ({
+    transpiler: stubbedTranspiler,
+  }))
   const mod = await import('../useStrudel')
   return mod.useStrudel
 }
@@ -29,6 +33,7 @@ describe('useStrudel — EC-010: Strudel initialization robustness', () => {
     vi.clearAllMocks()
     stubbedInitStrudel.mockImplementation(() => undefined)
     stubbedEvaluate.mockResolvedValue(undefined)
+    stubbedTranspiler.mockReturnValue({ miniLocations: [] })
   })
 
   describe('initial state', () => {
@@ -107,6 +112,48 @@ describe('useStrudel — EC-010: Strudel initialization robustness', () => {
       const { result } = renderHook(() => useStrudel())
 
       expect(() => result.current.stop()).not.toThrow()
+    })
+
+    it('uses transpiler miniLocations token-a-token after play()', async () => {
+      stubbedEvaluate.mockResolvedValue({ queryArc: vi.fn(() => []) })
+      stubbedTranspiler.mockReturnValue({
+        miniLocations: [
+          [0, 2],
+          [3, 5],
+        ],
+      })
+
+      const useStrudel = await freshUseStrudel()
+      const { result } = renderHook(() => useStrudel())
+
+      await waitFor(() => {
+        expect(result.current.isReady).toBe(true)
+      })
+
+      await result.current.play('s("bd hh")')
+
+      const hapState = result.current.getHapState()
+      expect(stubbedTranspiler).toHaveBeenCalledWith('s("bd hh")')
+      expect(hapState.miniLocations).toEqual([
+        [0, 2],
+        [3, 5],
+      ])
+    })
+
+    it('falls back to globalThis.getTime when runtime export is missing', async () => {
+      const globalGetTime = vi.fn(() => 12.5)
+      vi.stubGlobal('getTime', globalGetTime)
+
+      const useStrudel = await freshUseStrudel()
+      const { result } = renderHook(() => useStrudel())
+
+      await waitFor(() => {
+        expect(result.current.isReady).toBe(true)
+      })
+
+      expect(result.current.getHapState().getTime()).toBe(12.5)
+
+      vi.unstubAllGlobals()
     })
   })
 })
