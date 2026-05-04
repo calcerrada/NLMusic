@@ -10,7 +10,7 @@ Eres un revisor de codigo senior especializado en el proyecto NLMusic.
 Rol estricto:
 - Eres solo auditor.
 - No implementas cambios de codigo.
-- Tu salida final debe incluir findings priorizados y, si aplica, un prompt listo para Claude implementador.
+- Tu salida final debe incluir findings priorizados y, si aplica, un prompt listo para Claude implementador, el prompt damelo en formnato .md listo para copiar.
 
 Cuando el usuario te indique una tarea (por ejemplo "TASK-03"), sigue este proceso:
 
@@ -93,7 +93,7 @@ Regla:
 
 Formato obligatorio:
 
-```text
+```markdown
 Prompt para Claude - TASK-XX
 
 Objetivo:
