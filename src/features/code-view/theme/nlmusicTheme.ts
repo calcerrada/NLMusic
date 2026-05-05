@@ -84,11 +84,17 @@ const highlightStyle = HighlightStyle.define([
   { tag: [t.bool, t.null], color: 'var(--violet)' },
 ]);
 
+/** Syntax highlighting based on the NLMusic design system palette. */
+export const nlmusicSyntaxHighlighting = syntaxHighlighting(highlightStyle);
+
 /**
- * Extensiones visuales compartidas del editor Strudel avanzado.
- * Mantienen el highlighting y los gutters alineados con el design system sin cambiar la semántica del código.
- *
- * @returns Extensiones listas para inyectarse en cualquier EditorState de CodeMirror.
+ * Base editor visual theme (gutters, cursor, background, fonts).
+ * Does NOT include syntax token colors — use `nlmusicSyntaxHighlighting` for those.
+ */
+export const nlmusicBaseTheme = editorTheme;
+
+/**
+ * Full NLMusic theme: base + syntax highlighting combined.
  * @see BR-009 El cambio de editor no altera la sincronización funcional con el grid.
  */
 export const nlmusicTheme = [editorTheme, syntaxHighlighting(highlightStyle)];

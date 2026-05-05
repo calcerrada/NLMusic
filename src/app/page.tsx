@@ -3,6 +3,7 @@
 import { TransportBar } from '@features/transport';
 import { TrackZone } from '@features/sequencer';
 import { StrudelCodePanel } from '@features/code-view';
+import { ConfigTab } from '@features/config';
 import { PromptBox } from '@features/prompt';
 import { useSessionStore } from '@store/sessionStore';
 import { useStrudel } from '@features/audio';
@@ -54,6 +55,7 @@ export default function Home() {
         style={{ paddingTop: contentPaddingTop }}
       >
         <div className="flex h-[42px] items-end gap-1 border-b border-[var(--border)] bg-[var(--surface)] px-5">
+          {/* TASK-12: tercera pestaña de configuracion/guia comparte el mismo router de tabs del store. */}
           <button
             type="button"
             onClick={() => setActiveTab('sequencer')}
@@ -78,10 +80,24 @@ export default function Home() {
           >
             Strudel Code
           </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('config')}
+            className={[
+              'rounded-t-[8px] border border-b-0 px-4 py-2 text-[11px] uppercase tracking-[0.12em] transition-all',
+              activeTab === 'config'
+                ? 'border-[var(--border-active)] bg-[rgba(0,255,200,0.08)] text-[var(--cyan)]'
+                : 'border-transparent bg-transparent text-[var(--text-dim)] hover:text-[var(--text)]',
+            ].join(' ')}
+          >
+            Guía
+          </button>
         </div>
 
         <section className="min-h-0 flex-1 overflow-hidden">
-          {activeTab === 'sequencer' ? <TrackZone /> : <StrudelCodePanel strudel={strudel} />}
+          {activeTab === 'sequencer' && <TrackZone />}
+          {activeTab === 'code' && <StrudelCodePanel strudel={strudel} />}
+          {activeTab === 'config' && <ConfigTab strudel={strudel} />}
         </section>
       </div>
 

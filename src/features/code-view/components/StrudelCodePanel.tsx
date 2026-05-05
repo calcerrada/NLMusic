@@ -59,6 +59,9 @@ export function StrudelCodePanel({ strudel }: StrudelCodePanelProps) {
   const currentCode = useSessionStore((s) => s.currentCode);
   const tracks = useSessionStore((s) => s.tracks);
   const isPlaying = useSessionStore((s) => s.isPlaying);
+  const editorMode = useSessionStore((s) => s.editorMode);
+  const highlightingEnabled = useSessionStore((s) => s.highlightingEnabled);
+  const hapVisualizationEnabled = useSessionStore((s) => s.hapVisualizationEnabled);
   const { step: transportStep } = useBeatClock();
   const setManualCode = useSessionStore((s) => s.setManualCode);
   const syncCodePattern = useSessionStore((s) => s.syncCodePattern);
@@ -67,11 +70,12 @@ export function StrudelCodePanel({ strudel }: StrudelCodePanelProps) {
   const editorRef = useRef<StrudelEditorRef>(null);
   // Stable getter so useHapEvents doesn't re-run on every render
   const getView = useCallback(() => editorRef.current?.view ?? null, []);
-  // BR-001: useHapEvents runs a RAF loop — purely visual, never affects audio timing
-  // TASK-11 degraded mode: fallbackStep keeps minimal visual feedback if hap API is unavailable.
-  // BR-009: el panel conecta el clock visual y el EditorView sin mover estado efímero al store global.
+  // Gate hap highlighting: only active in advanced mode with the toggle ON.
+  // Passing isPlaying=false when disabled causes useHapEvents to cancel the RAF loop
+  // and clear all decorations — purely visual, BR-001 guarantee preserved.
+  const hapEnabled = editorMode === 'advanced' && hapVisualizationEnabled;
   useHapEvents({
-    isPlaying,
+    isPlaying: isPlaying && hapEnabled,
     fallbackStep: transportStep,
     getView,
     getHapState: strudel.getHapState,
@@ -190,18 +194,32 @@ export function StrudelCodePanel({ strudel }: StrudelCodePanelProps) {
     <div className="flex h-full flex-col gap-4 overflow-y-auto px-5 py-5">
       <div className="flex flex-col gap-2">
         {/* BR-009: editor cliente-only para no romper el SSR de Next.js. */}
-        <div className="rounded-[8px] border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
-          {/* TASK-11: ref exposes the EditorView for hap highlighting; enableHapHighlighting adds the StateFields */}
-          <StrudelEditor
-            ref={editorRef}
+        {editorMode === 'advanced' ? (
+          <div className="rounded-[8px] border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
+            {/* TASK-11: ref exposes the EditorView for hap highlighting; enableHapHighlighting adds the StateFields */}
+            <StrudelEditor
+              ref={editorRef}
+              value={localCode}
+              onChange={handleEditorChange}
+              onFocus={() => setIsFocused(true)}
+              onBlur={() => setIsFocused(false)}
+              ariaLabel="Código Strudel editable"
+              enableHapHighlighting={hapEnabled}
+              highlightingEnabled={highlightingEnabled}
+            />
+          </div>
+        ) : (
+          <textarea
             value={localCode}
-            onChange={handleEditorChange}
+            onChange={(e) => handleEditorChange(e.target.value)}
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
-            ariaLabel="Código Strudel editable"
-            enableHapHighlighting
+            className="w-full p-3 rounded-[8px] border border-[var(--border)] bg-[var(--surface)] font-[JetBrains_Mono,monospace] text-[12px] text-[var(--cyan)] resize-none focus:border-[var(--border-active)] focus:outline-none"
+            style={{ height: '200px' }}
+            placeholder="Escribe código Strudel aquí..."
+            aria-label="Código Strudel editable"
           />
-        </div>
+        )}
 
         {/* EC-006: error inline no bloqueante; desaparece cuando el código vuelve a ser válido. */}
         {codeError && (

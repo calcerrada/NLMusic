@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { SendHorizontal, TriangleAlert, RotateCcw } from "lucide-react";
 import { usePatternGen } from "../hooks/usePatternGen";
 import { useSessionStore } from "@store/sessionStore";
@@ -25,6 +25,17 @@ export function PromptBox({ motorAvailable = true }: PromptBoxProps) {
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const { generate, retry, isLoading, error, info } = usePatternGen();
   const uiState = useSessionStore((s) => s.uiState);
+  const promptDraft = useSessionStore((s) => s.promptDraft);
+  const setPromptDraft = useSessionStore((s) => s.setPromptDraft);
+
+  // TASK-12/BR-010: inserta ejemplos desde ConfigTab sin auto-submit al LLM.
+  useEffect(() => {
+    if (promptDraft !== null) {
+      setPrompt(promptDraft);
+      setPromptDraft(null);
+      textareaRef.current?.focus();
+    }
+  }, [promptDraft, setPromptDraft]);
 
   const isError = uiState === "error";
   const inputDisabled = isLoading || !motorAvailable;

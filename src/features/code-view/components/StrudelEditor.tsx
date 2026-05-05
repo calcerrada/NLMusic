@@ -11,7 +11,7 @@ import { extensions as strudelExtensions } from '@strudel/codemirror';
 // para garantizar que los `StateField`/`StateEffect` registrados aquí son los mismos
 // que los que despachan los effects desde el RAF loop.
 import { highlightExtension } from '@lib/strudelHighlight';
-import { nlmusicTheme } from '../theme/nlmusicTheme';
+import { nlmusicBaseTheme, nlmusicSyntaxHighlighting } from '../theme/nlmusicTheme';
 
 /**
  * Referencia imperativa al EditorView de CodeMirror.
@@ -34,6 +34,8 @@ interface StrudelEditorProps {
    * The extension is inert (no visual effect) when no haps are dispatched.
    */
   enableHapHighlighting?: boolean;
+  /** TASK-12: when false, syntax token colors are removed but editor layout is preserved. */
+  highlightingEnabled?: boolean;
 }
 
 /**
@@ -50,12 +52,13 @@ interface StrudelEditorProps {
  * @see BR-009 La sincronización bidireccional depende de distinguir edición local de updates externos.
  */
 export const StrudelEditor = forwardRef<StrudelEditorRef, StrudelEditorProps>(
-  ({ value, onChange, onFocus, onBlur, disabled = false, ariaLabel, enableHapHighlighting = true }, ref) => {
+  ({ value, onChange, onFocus, onBlur, disabled = false, ariaLabel, enableHapHighlighting = true, highlightingEnabled = true }, ref) => {
     const containerRef = useRef<HTMLDivElement | null>(null);
     const viewRef = useRef<EditorView | null>(null);
     // BR-009: evita bucles cuando el padre reinyecta código desde grid o LLM.
     const isExternalUpdate = useRef(false);
     const editableCompartment = useRef(new Compartment());
+    const highlightCompartment = useRef(new Compartment());
 
     // TASK-11: expone el EditorView para decoraciones temporales sobre el código.
     useImperativeHandle(ref, () => ({
@@ -81,7 +84,9 @@ export const StrudelEditor = forwardRef<StrudelEditorRef, StrudelEditorProps>(
           extensions: [
             lineNumbers(),
             javascript(),
-            ...nlmusicTheme,
+            nlmusicBaseTheme,
+            // TASK-12: syntax highlighting in a Compartment so it can be toggled live
+            highlightCompartment.current.of(highlightingEnabled ? nlmusicSyntaxHighlighting : []),
             strudelExtensions.isBracketMatchingEnabled(true),
             strudelExtensions.isBracketClosingEnabled(true),
             // TASK-11: StateFields for hap highlighting; inert when no haps are dispatched
@@ -136,6 +141,17 @@ export const StrudelEditor = forwardRef<StrudelEditorRef, StrudelEditorProps>(
         effects: editableCompartment.current.reconfigure(EditorView.editable.of(!disabled)),
       });
     }, [disabled]);
+
+    // TASK-12: toggle syntax colors without remounting the editor
+    useEffect(() => {
+      const view = viewRef.current;
+      if (!view) return;
+      view.dispatch({
+        effects: highlightCompartment.current.reconfigure(
+          highlightingEnabled ? nlmusicSyntaxHighlighting : [],
+        ),
+      });
+    }, [highlightingEnabled]);
 
     return <div ref={containerRef} style={{ width: '100%' }} />;
   },

@@ -5,8 +5,9 @@ import { devtools, persist } from "zustand/middleware";
 import type { Track, TrackJSON } from "@lib/types";
 import { compileToStrudel } from "@features/audio/compiler";
 
-type ActiveTab = "sequencer" | "code";
+type ActiveTab = "sequencer" | "code" | "config";
 export type UiState = "idle" | "loading" | "playing" | "paused" | "error";
+export type EditorMode = "advanced" | "simple";
 
 /**
  * Deriva el estado visual principal a partir de pistas y reproducción real.
@@ -29,6 +30,9 @@ interface PersistedState {
   bpm: number;
   tracks: Track[];
   turns: { role: "user" | "assistant"; content: string }[];
+  editorMode: EditorMode;
+  highlightingEnabled: boolean;
+  hapVisualizationEnabled: boolean;
 }
 
 export interface SessionStore {
@@ -43,6 +47,10 @@ export interface SessionStore {
   lastPrompt: string | null;
 
   isCodeManuallyEdited: boolean;
+  editorMode: EditorMode;
+  highlightingEnabled: boolean;
+  hapVisualizationEnabled: boolean;
+  promptDraft: string | null;
 
   setTracks: (tracks: Track[]) => void;
   setBpm: (bpm: number) => void;
@@ -69,6 +77,10 @@ export interface SessionStore {
   clearError: () => void;
   setLastPrompt: (prompt: string) => void;
   retry: () => string | null;
+  setEditorMode: (mode: EditorMode) => void;
+  setHighlightingEnabled: (enabled: boolean) => void;
+  setHapVisualizationEnabled: (enabled: boolean) => void;
+  setPromptDraft: (text: string | null) => void;
 }
 
 /**
@@ -111,6 +123,10 @@ export const useSessionStore = create<SessionStore>()(
         uiState: deriveUiState(initialTracks, false),
         lastError: null,
         lastPrompt: null,
+        editorMode: "advanced",
+        highlightingEnabled: true,
+        hapVisualizationEnabled: true,
+        promptDraft: null,
 
         // EC-007: al eliminar la última pista forzamos IDLE y detenemos reproducción.
         setTracks: (tracks) =>
@@ -141,6 +157,9 @@ export const useSessionStore = create<SessionStore>()(
             isPlaying: value,
             uiState: deriveUiState(state.tracks, value),
           })),
+        /**
+         * Cambia la pestaña activa del layout principal sin alterar audio ni patron.
+         */
         setActiveTab: (tab) => set({ activeTab: tab }),
         setCurrentCode: (code) => set({ currentCode: code }),
         // BR-009: edición manual del editor — marca el grid como desincronizado con el código
@@ -345,13 +364,38 @@ export const useSessionStore = create<SessionStore>()(
           set({ uiState: "loading", lastError: null });
           return prompt;
         },
+
+        /**
+         * Alterna entre editor avanzado y simple con efecto inmediato en el panel de codigo.
+         */
+        setEditorMode: (mode) => set({ editorMode: mode }),
+        /**
+         * Habilita o deshabilita colorizacion sintactica sin afectar compilacion ni playback.
+         */
+        setHighlightingEnabled: (enabled) => set({ highlightingEnabled: enabled }),
+        /**
+         * Controla el overlay visual de haps; afecta solo visualizacion del editor avanzado.
+         *
+         * @see BR-001 Toggle visual no debe interrumpir audio
+         */
+        setHapVisualizationEnabled: (enabled) => set({ hapVisualizationEnabled: enabled }),
+        /**
+         * Buffer temporal para insertar ejemplos desde ConfigTab en PromptBox sin auto-submit.
+         *
+         * @see BR-010 Prefill no equivale a generar patron
+         */
+        setPromptDraft: (text) => set({ promptDraft: text }),
       }),
       {
         name: "nlmusic-session",
+        // TASK-12: preferencias del editor persisten entre sesiones via localStorage.
         partialize: (state): PersistedState => ({
           bpm: state.bpm,
           tracks: state.tracks,
           turns: state.turns,
+          editorMode: state.editorMode,
+          highlightingEnabled: state.highlightingEnabled,
+          hapVisualizationEnabled: state.hapVisualizationEnabled,
         }),
       },
     ),

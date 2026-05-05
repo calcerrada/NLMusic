@@ -709,4 +709,49 @@ describe('sessionStore — Zustand store with business logic', () => {
       expect(state.tracks).toHaveLength(1)
     })
   })
+
+  describe('TASK-12 — editor preferences and prompt draft', () => {
+    it('uses TASK-12 defaults for editor preferences', () => {
+      const state = useSessionStore.getState()
+
+      expect(state.editorMode).toBe('advanced')
+      expect(state.highlightingEnabled).toBe(true)
+      expect(state.hapVisualizationEnabled).toBe(true)
+    })
+
+    it('updates editor preferences through dedicated actions', () => {
+      useSessionStore.getState().setEditorMode('simple')
+      useSessionStore.getState().setHighlightingEnabled(false)
+      useSessionStore.getState().setHapVisualizationEnabled(false)
+
+      const state = useSessionStore.getState()
+      expect(state.editorMode).toBe('simple')
+      expect(state.highlightingEnabled).toBe(false)
+      expect(state.hapVisualizationEnabled).toBe(false)
+    })
+
+    it('stores prompt draft text and allows clearing it after consumption', () => {
+      useSessionStore.getState().setPromptDraft('Un kick 909 en 4x4 techno a 138 BPM')
+      expect(useSessionStore.getState().promptDraft).toBe('Un kick 909 en 4x4 techno a 138 BPM')
+
+      useSessionStore.getState().setPromptDraft(null)
+      expect(useSessionStore.getState().promptDraft).toBeNull()
+    })
+
+    it('persists editor preferences in localStorage', () => {
+      localStorage.removeItem('nlmusic-session')
+
+      useSessionStore.getState().setEditorMode('simple')
+      useSessionStore.getState().setHighlightingEnabled(false)
+      useSessionStore.getState().setHapVisualizationEnabled(false)
+
+      const raw = localStorage.getItem('nlmusic-session')
+      expect(raw).not.toBeNull()
+
+      const persisted = JSON.parse(raw as string)
+      expect(persisted.state.editorMode).toBe('simple')
+      expect(persisted.state.highlightingEnabled).toBe(false)
+      expect(persisted.state.hapVisualizationEnabled).toBe(false)
+    })
+  })
 })

@@ -16,8 +16,9 @@ vi.mock('@features/prompt/hooks/usePatternGen', () => ({
 
 // Mock useSessionStore — PromptBox reads uiState for error banner
 vi.mock('@store/sessionStore', () => ({
-  useSessionStore: vi.fn((selector: (s: { uiState: string }) => unknown) =>
-    selector({ uiState: 'idle' })
+  useSessionStore: vi.fn(
+    (selector: (s: { uiState: string; promptDraft: string | null; setPromptDraft: (v: string | null) => void }) => unknown) =>
+      selector({ uiState: 'idle', promptDraft: null, setPromptDraft: vi.fn() })
   ),
 }))
 
@@ -139,8 +140,9 @@ describe('PromptBox — EC-010: disabled when motorAvailable=false', () => {
         error: 'Error de red',
         info: null,
       })
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      vi.mocked(useSessionStore).mockImplementation((selector: any) => selector({ uiState: 'error' }))
+      vi.mocked(useSessionStore).mockImplementation((selector: any) =>
+        selector({ uiState: 'error', promptDraft: null, setPromptDraft: vi.fn() })
+      )
 
       render(<PromptBox motorAvailable />)
 
@@ -159,8 +161,9 @@ describe('PromptBox — EC-010: disabled when motorAvailable=false', () => {
         info: 'El LLM propuso 7 pistas; se mantuvieron 5 (límite BR-006).',
       })
       // PromptBox solo muestra info cuando no está en estado global de error.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      vi.mocked(useSessionStore).mockImplementation((selector: any) => selector({ uiState: 'idle' }))
+      vi.mocked(useSessionStore).mockImplementation((selector: any) =>
+        selector({ uiState: 'idle', promptDraft: null, setPromptDraft: vi.fn() })
+      )
 
       render(<PromptBox motorAvailable />)
 

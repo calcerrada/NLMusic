@@ -295,10 +295,10 @@ Antes de implementar cualquier feature:
 - StrudelCodePanel editable (textarea) con sincronización bidireccional grid ↔ código + flag `isCodeManuallyEdited` (TASK-08)
 - Contexto LLM coherente en modo código: `codeMode` como fuente de verdad y guardas de pipeline para deltas inseguros (TASK-09)
 - Editor CodeMirror 6 con syntax highlighting (paleta del design system) — deps: codemirror, @codemirror/*, @strudel/codemirror (TASK-10)
+- Tercera pestaña Configuración/Guía con estado del sistema, guía de prompts clickable y preferencias de editor persistidas (TASK-12)
 
 **Pendiente Sprint 2 (orden de ejecución):**
 - TASK-11 — Hap highlighting en tiempo real (flash de tokens al sonar) sobre el editor CodeMirror
-- TASK-12 — Tercera pestaña Configuración/Guía (CAP-NLM-010) + toggle editor avanzado/simple
 - TASK-13 — Multiidioma UI — ES / EN (Sección 10)
 
 **Nuevas dependencias añadidas (TASK-10):**
@@ -307,6 +307,10 @@ Antes de implementar cualquier feature:
 **Nuevos directorios/archivos (TASK-10):**
 - `src/features/code-view/theme/nlmusicTheme.ts` — theme dedicado reutilizable
 - `src/features/code-view/components/StrudelEditor.tsx` — componente CodeMirror puro (sin lógica de store)
+
+**Nuevos directorios/archivos (TASK-12):**
+- `src/features/config/` — tercera pestaña Configuración/Guía (estado, guía de prompts, atajos, preferencias)
+- `src/features/code-view/components/__tests__/StrudelCodePanel.task12.test.tsx` — cobertura del toggle editor avanzado/simple
 
 El detalle de cada tarea está en `.claude/tasks/`. El índice maestro
 con dependencias y criterios de revisión está en `.claude/tasks/TASK-INDEX.md`.

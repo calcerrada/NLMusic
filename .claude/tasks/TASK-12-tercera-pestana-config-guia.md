@@ -1,6 +1,8 @@
 ---
 id: TASK-12
-status: pending
+status: done
+completed_commit: pending-fill-after-commit
+completed_date: 2026-05-05
 ---
 
 # TASK-12 — Tercera pestaña: Configuración / Guía (CAP-NLM-010)
