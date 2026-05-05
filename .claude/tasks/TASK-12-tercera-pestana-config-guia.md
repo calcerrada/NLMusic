@@ -1,7 +1,7 @@
 ---
 id: TASK-12
 status: done
-completed_commit: pending-fill-after-commit
+completed_commit: 5e655c9
 completed_date: 2026-05-05
 ---
 
