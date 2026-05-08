@@ -61,7 +61,7 @@ export function useHapEvents({ isPlaying, fallbackStep, getView, getHapState }: 
         return highlightApiRef.current;
       }
       try {
-        const mod = await import('@strudel/codemirror');
+        const mod = await import('@lib/strudelHighlight');
         highlightApiRef.current = {
           updateMiniLocations: mod.updateMiniLocations,
           highlightMiniLocations: mod.highlightMiniLocations,
