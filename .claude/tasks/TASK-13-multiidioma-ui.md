@@ -1,7 +1,7 @@
 ---
 id: TASK-13
 status: done
-completed_commit: pending-fill-after-commit
+completed_commit: 1aacc87
 completed_date: 2026-05-08
 ---
 
