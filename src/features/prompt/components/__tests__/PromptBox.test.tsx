@@ -14,16 +14,16 @@ vi.mock('@features/prompt/hooks/usePatternGen', () => ({
   })),
 }))
 
-// Mock useSessionStore — PromptBox reads uiState for error banner
+// Mock useSessionStore — PromptBox reads uiState and language for error banner and translations
 vi.mock('@store/sessionStore', () => ({
   useSessionStore: vi.fn(
-    (selector: (s: { uiState: string; promptDraft: string | null; setPromptDraft: (v: string | null) => void }) => unknown) =>
-      selector({ uiState: 'idle', promptDraft: null, setPromptDraft: vi.fn() })
+    (selector: (s: { uiState: string; promptDraft: string | null; setPromptDraft: (v: string | null) => void; language: string }) => unknown) =>
+      selector({ uiState: 'idle', promptDraft: null, setPromptDraft: vi.fn(), language: 'es' })
   ),
 }))
 
 const DISABLED_REASON =
-  'Motor de audio no disponible. Recarga la pagina o prueba otro navegador.'
+  'Motor de audio no disponible. Recarga la página o prueba otro navegador.'
 
 describe('PromptBox — EC-010: disabled when motorAvailable=false', () => {
   beforeEach(() => {
@@ -141,7 +141,7 @@ describe('PromptBox — EC-010: disabled when motorAvailable=false', () => {
         info: null,
       })
       vi.mocked(useSessionStore).mockImplementation((selector: any) =>
-        selector({ uiState: 'error', promptDraft: null, setPromptDraft: vi.fn() })
+        selector({ uiState: 'error', promptDraft: null, setPromptDraft: vi.fn(), language: 'es' })
       )
 
       render(<PromptBox motorAvailable />)
@@ -162,7 +162,7 @@ describe('PromptBox — EC-010: disabled when motorAvailable=false', () => {
       })
       // PromptBox solo muestra info cuando no está en estado global de error.
       vi.mocked(useSessionStore).mockImplementation((selector: any) =>
-        selector({ uiState: 'idle', promptDraft: null, setPromptDraft: vi.fn() })
+        selector({ uiState: 'idle', promptDraft: null, setPromptDraft: vi.fn(), language: 'es' })
       )
 
       render(<PromptBox motorAvailable />)

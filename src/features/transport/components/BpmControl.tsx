@@ -2,6 +2,7 @@
 
 import { Plus, Minus } from 'lucide-react';
 import { useSessionStore } from '@store/sessionStore';
+import { useTranslation } from '@lib/i18n';
 
 interface BpmControlProps {
   disabled?: boolean;
@@ -18,6 +19,7 @@ interface BpmControlProps {
  * @see EC-010 Motor no disponible — controles de tempo deshabilitados
  */
 export function BpmControl({ disabled = false, disabledReason }: BpmControlProps) {
+  const t = useTranslation();
   const bpm = useSessionStore((s) => s.bpm);
   const setBpm = useSessionStore((s) => s.setBpm);
 
@@ -27,6 +29,7 @@ export function BpmControl({ disabled = false, disabledReason }: BpmControlProps
       <button
         type="button"
         title={disabledReason}
+        aria-label={t('bpm.decrementLabel')}
         disabled={disabled}
         className="h-[22px] w-[22px] rounded-[4px] border border-[var(--border)] bg-[var(--surface2)] text-[var(--text)] transition-colors hover:border-[var(--border-active)] hover:text-[var(--cyan)]"
         onClick={() => setBpm(bpm - 1)}
@@ -37,6 +40,7 @@ export function BpmControl({ disabled = false, disabledReason }: BpmControlProps
       <button
         type="button"
         title={disabledReason}
+        aria-label={t('bpm.incrementLabel')}
         disabled={disabled}
         className="h-[22px] w-[22px] rounded-[4px] border border-[var(--border)] bg-[var(--surface2)] text-[var(--text)] transition-colors hover:border-[var(--border-active)] hover:text-[var(--cyan)]"
         onClick={() => setBpm(bpm + 1)}

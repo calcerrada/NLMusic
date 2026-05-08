@@ -6,9 +6,11 @@ import { StrudelCodePanel } from '@features/code-view';
 import { ConfigTab } from '@features/config';
 import { PromptBox } from '@features/prompt';
 import { useSessionStore } from '@store/sessionStore';
+import { useTranslation } from '@lib/i18n';
 import { useStrudel } from '@features/audio';
 
 export default function Home() {
+  const t = useTranslation();
   // Single useStrudel instance — passed down to avoid double-init
   const strudel = useStrudel();
   const activeTab = useSessionStore((s) => s.activeTab);
@@ -33,10 +35,10 @@ export default function Home() {
             <span className="mt-0.5 text-[16px] leading-none text-[var(--red)]">⚠</span>
             <div className="flex-1 min-w-0">
               <p className="text-[13px] font-medium text-[var(--red)]">
-                Motor de audio no disponible
+                {t('page.audioErrorTitle')}
               </p>
               <p className="mt-0.5 text-[11px] text-[var(--text-dim)] break-words">
-                {strudel.initError} — Recarga la página o prueba con otro navegador.
+                {strudel.initError} — {t('page.audioErrorHint')}
               </p>
             </div>
             <button
@@ -44,7 +46,7 @@ export default function Home() {
               onClick={() => window.location.reload()}
               className="shrink-0 rounded-[6px] border border-[rgba(255,68,102,0.5)] bg-[rgba(255,68,102,0.15)] px-3 py-1.5 text-[11px] text-[var(--red)] transition-colors hover:bg-[rgba(255,68,102,0.25)]"
             >
-              Recargar
+              {t('page.reload')}
             </button>
           </div>
         </div>
@@ -66,7 +68,7 @@ export default function Home() {
                 : 'border-transparent bg-transparent text-[var(--text-dim)] hover:text-[var(--text)]',
             ].join(' ')}
           >
-            Sequencer
+            {t('tabs.sequencer')}
           </button>
           <button
             type="button"
@@ -78,7 +80,7 @@ export default function Home() {
                 : 'border-transparent bg-transparent text-[var(--text-dim)] hover:text-[var(--text)]',
             ].join(' ')}
           >
-            Strudel Code
+            {t('tabs.strudel')}
           </button>
           <button
             type="button"
@@ -90,7 +92,7 @@ export default function Home() {
                 : 'border-transparent bg-transparent text-[var(--text-dim)] hover:text-[var(--text)]',
             ].join(' ')}
           >
-            Guía
+            {t('tabs.config')}
           </button>
         </div>
 

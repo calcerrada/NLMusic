@@ -36,8 +36,9 @@ grep -l "^status: pending" .claude/tasks/TASK-*.md
 - [x] **TASK-09** — Contexto LLM coherente en modo código · `b870bd0` · 2026-04-27
 - [x] **TASK-10** — Editor Strudel con CodeMirror (syntax highlighting) · `4da9edf` · 2026-04-28
 - [ ] **TASK-11** — Hap highlighting en tiempo real  ← siguiente
+- [x] **TASK-13** — Multiidioma UI (ES / EN) · `pending-fill-after-commit` · 2026-05-08
 - [x] **TASK-12** — Tercera pestaña config/guía (+ toggle editor avanzado/simple) · `5e655c9` · 2026-05-05
-- [ ] **TASK-13** — Multiidioma UI (ES / EN)
+- [x] **TASK-13** — Multiidioma UI (ES / EN) · `pending-fill-after-commit` · 2026-05-08
 
 **Dependencias clave:**
 - TASK-04 desbloquea TASK-05 y TASK-07

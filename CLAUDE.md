@@ -297,9 +297,10 @@ Antes de implementar cualquier feature:
 - Editor CodeMirror 6 con syntax highlighting (paleta del design system) — deps: codemirror, @codemirror/*, @strudel/codemirror (TASK-10)
 - Tercera pestaña Configuración/Guía con estado del sistema, guía de prompts clickable y preferencias de editor persistidas (TASK-12)
 
+- Multiidioma UI ES / EN: selector discreto en TransportBar, detección del navegador, diccionario tipado centralizado, hook `useTranslation` reactivo, persistencia en localStorage (TASK-13)
+
 **Pendiente Sprint 2 (orden de ejecución):**
 - TASK-11 — Hap highlighting en tiempo real (flash de tokens al sonar) sobre el editor CodeMirror
-- TASK-13 — Multiidioma UI — ES / EN (Sección 10)
 
 **Nuevas dependencias añadidas (TASK-10):**
 - `codemirror@6.0.2`, `@codemirror/state`, `@codemirror/view`, `@codemirror/language`, `@codemirror/commands`, `@codemirror/lang-javascript`, `@strudel/codemirror@1.3.0`
@@ -312,5 +313,10 @@ Antes de implementar cualquier feature:
 - `src/features/config/` — tercera pestaña Configuración/Guía (estado, guía de prompts, atajos, preferencias)
 - `src/features/code-view/components/__tests__/StrudelCodePanel.task12.test.tsx` — cobertura del toggle editor avanzado/simple
 
-El detalle de cada tarea está en `.claude/tasks/`. El índice maestro
+**Nuevos directorios/archivos (TASK-13):**
+- `src/lib/i18n/translations.ts` — diccionario ES/EN tipado con `TranslationKey` union
+- `src/lib/i18n/useTranslation.ts` — hook reactivo que lee `language` del store
+- `src/lib/i18n/index.ts` — barrel export
+
+ El índice maestro
 con dependencias y criterios de revisión está en `.claude/tasks/TASK-INDEX.md`.

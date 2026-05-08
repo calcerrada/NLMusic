@@ -29,6 +29,7 @@ describe('TrackCard — TASK-07: Eliminar pista desde UI (CAP-NLM-003)', () => {
       activeTab: 'sequencer',
       currentCode: 'stack(...).slow(4).cpm(138.00)',
       turns: [],
+      language: 'es',
     })
   })
 

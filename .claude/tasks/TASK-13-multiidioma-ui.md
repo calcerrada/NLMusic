@@ -1,6 +1,8 @@
 ---
 id: TASK-13
-status: pending
+status: done
+completed_commit: pending-fill-after-commit
+completed_date: 2026-05-08
 ---
 
 # TASK-13 — Multiidioma UI: ES / EN

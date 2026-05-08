@@ -2,6 +2,7 @@
 
 import { useSessionStore } from '@store/sessionStore';
 import { useBeatClock } from '@features/audio';
+import { useTranslation } from '@lib/i18n';
 import { TrackCard } from './TrackCard';
 
 /**
@@ -12,6 +13,7 @@ import { TrackCard } from './TrackCard';
  * @see EC-004 Al llegar a 5, el contador destaca el límite alcanzado
  */
 export function TrackZone() {
+  const t = useTranslation();
   const tracks = useSessionStore((s) => s.tracks);
   const isCodeManuallyEdited = useSessionStore((s) => s.isCodeManuallyEdited);
   const { step } = useBeatClock();
@@ -26,12 +28,12 @@ export function TrackZone() {
             className="text-[10px] uppercase tracking-[0.1em]"
             style={{ color: atLimit ? 'var(--amber)' : 'var(--text-muted)' }}
           >
-            Pistas: {tracks.length} / 5
+            {t('tracks.counterLabel')}: {tracks.length} / 5
           </span>
         </div>
         <div className="flex h-full min-h-[260px] flex-col items-center justify-center gap-3 opacity-25 pointer-events-none">
           <span className="text-[28px]">◈</span>
-          <p className="text-[11px] tracking-[0.08em] text-[var(--text-dim)]">Describe tu patrón abajo para empezar</p>
+          <p className="text-[11px] tracking-[0.08em] text-[var(--text-dim)]">{t('tracks.empty')}</p>
         </div>
       </div>
     );
@@ -45,14 +47,14 @@ export function TrackZone() {
           className="text-[10px] uppercase tracking-[0.1em]"
           style={{ color: atLimit ? 'var(--amber)' : 'var(--text-muted)' }}
         >
-          Pistas: {tracks.length} / 5
+          {t('tracks.counterLabel')}: {tracks.length} / 5
         </span>
       </div>
       {/* BR-009: "modo código" — grid may not reflect manually edited Strudel code */}
       {isCodeManuallyEdited && (
         <div className="mx-5 mb-1 rounded-[6px] border border-[rgba(180,130,255,0.25)] bg-[rgba(180,130,255,0.06)] px-3 py-1.5">
           <p className="text-[10px] text-[rgba(180,130,255,0.7)] uppercase tracking-[0.08em]">
-            Editado manualmente — el grid puede no reflejar el código actual
+            {t('tracks.codeEditedWarning')}
           </p>
         </div>
       )}

@@ -2,12 +2,14 @@
 
 import { useSessionStore } from '@store/sessionStore';
 import type { EditorMode } from '@store/sessionStore';
+import { useTranslation } from '@lib/i18n';
 
 /**
  * Superficie de configuracion del editor Strudel con aplicacion inmediata.
  * Todas las preferencias viven en store persistido para mantener continuidad entre sesiones.
  */
 export function EditorPreferences() {
+  const t = useTranslation();
   const editorMode = useSessionStore((s) => s.editorMode);
   const highlightingEnabled = useSessionStore((s) => s.highlightingEnabled);
   const hapVisualizationEnabled = useSessionStore((s) => s.hapVisualizationEnabled);
@@ -18,15 +20,15 @@ export function EditorPreferences() {
   return (
     <section>
       <h2 className="mb-3 text-[10px] uppercase tracking-[0.12em] text-[var(--text-muted)]">
-        Preferencias del editor de código
+        {t('config.editorPrefs')}
       </h2>
       <div className="rounded-[8px] border border-[var(--border)] bg-[var(--surface2)] px-4 py-3 flex flex-col gap-4">
         {/* Editor mode toggle */}
-        <PrefRow label="Editor">
+        <PrefRow label={t('config.editorLabel')}>
           <SegmentedControl
             options={[
-              { value: 'advanced', label: 'Avanzado (CodeMirror)' },
-              { value: 'simple', label: 'Simple (textarea)' },
+              { value: 'advanced', label: t('config.editorAdvanced') },
+              { value: 'simple', label: t('config.editorSimple') },
             ]}
             value={editorMode}
             onChange={(v) => setEditorMode(v as EditorMode)}
@@ -34,13 +36,13 @@ export function EditorPreferences() {
         </PrefRow>
 
         {/* Highlighting toggle */}
-        <PrefRow label="Highlighting de sintaxis">
+        <PrefRow label={t('config.highlighting')}>
           <Toggle value={highlightingEnabled} onChange={setHighlightingEnabled} />
         </PrefRow>
 
         {/* Hap visualization — solo visible en modo avanzado */}
         {editorMode === 'advanced' && (
-          <PrefRow label="Visualización haps">
+          <PrefRow label={t('config.hapVisualization')}>
             <Toggle value={hapVisualizationEnabled} onChange={setHapVisualizationEnabled} />
           </PrefRow>
         )}
@@ -49,7 +51,7 @@ export function EditorPreferences() {
       {/* Espacio reservado para formulario de API key en v1+ */}
       <div className="mt-4 rounded-[8px] border border-dashed border-[var(--border)] px-4 py-3">
         <p className="text-[11px] text-[var(--text-muted)]">
-          Configuración de API key — disponible en v1+
+          {t('config.apiKeyPlaceholder')}
         </p>
       </div>
     </section>

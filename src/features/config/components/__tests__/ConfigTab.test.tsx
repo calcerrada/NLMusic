@@ -51,6 +51,7 @@ describe('ConfigTab TASK-12', () => {
       hapVisualizationEnabled: true,
       uiState: 'paused',
       isPlaying: false,
+      language: 'es',
     })
   })
 

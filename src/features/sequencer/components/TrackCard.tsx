@@ -2,6 +2,7 @@
 
 import type { Track } from '@lib/types';
 import { useSessionStore } from '@store/sessionStore';
+import { useTranslation } from '@lib/i18n';
 import { Sequencer } from './Sequencer';
 import { VolumeSlider } from './VolumeSlider';
 
@@ -18,6 +19,7 @@ interface TrackCardProps {
  * @see EC-007/EC-008 Si es la última pista, el store transiciona a IDLE
  */
 export function TrackCard({ track, activeStep }: TrackCardProps) {
+  const t = useTranslation();
   const toggleMute = useSessionStore((s) => s.toggleMute);
   const toggleSolo = useSessionStore((s) => s.toggleSolo);
   const deleteTrack = useSessionStore((s) => s.deleteTrack);
@@ -48,6 +50,7 @@ export function TrackCard({ track, activeStep }: TrackCardProps) {
                 ? 'border-[var(--red)] bg-[var(--red)] text-white'
                 : 'border-[var(--border)] bg-[var(--surface2)] text-[var(--text)] hover:border-[var(--border-active)]',
             ].join(' ')}
+            aria-label={`${t('track.muteLabel')} ${track.name}`}
             onClick={() => toggleMute(track.id)}
           >
             M
@@ -60,6 +63,7 @@ export function TrackCard({ track, activeStep }: TrackCardProps) {
                 ? 'border-[var(--amber)] bg-[var(--amber)] text-black'
                 : 'border-[var(--border)] bg-[var(--surface2)] text-[var(--text)] hover:border-[var(--border-active)]',
             ].join(' ')}
+            aria-label={`${t('track.soloLabel')} ${track.name}`}
             onClick={() => toggleSolo(track.id)}
           >
             S
@@ -67,7 +71,7 @@ export function TrackCard({ track, activeStep }: TrackCardProps) {
           {/* BR-007: destructivo e irreversible, sin confirmación */}
           <button
             type="button"
-            aria-label={`Eliminar pista ${track.name}`}
+            aria-label={`${t('tracks.deleteAriaLabel')} ${track.name}`}
             className={[
               'h-7 w-7 rounded-[4px] border text-[14px] leading-none font-semibold transition-all',
               'border-[var(--border)] bg-[var(--surface2)] text-[var(--text-muted)] hover:border-[var(--red)] hover:text-[var(--red)]',

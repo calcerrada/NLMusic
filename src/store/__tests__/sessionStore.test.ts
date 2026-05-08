@@ -753,5 +753,23 @@ describe('sessionStore — Zustand store with business logic', () => {
       expect(persisted.state.highlightingEnabled).toBe(false)
       expect(persisted.state.hapVisualizationEnabled).toBe(false)
     })
+
+    it('TASK-13: persists language selection in localStorage', () => {
+      localStorage.removeItem('nlmusic-session')
+
+      useSessionStore.getState().setLanguage('en')
+
+      const raw = localStorage.getItem('nlmusic-session')
+      expect(raw).not.toBeNull()
+
+      const persisted = JSON.parse(raw as string)
+      expect(persisted.state.language).toBe('en')
+
+      // Switching back to ES must also persist correctly
+      useSessionStore.getState().setLanguage('es')
+      const raw2 = localStorage.getItem('nlmusic-session')
+      const persisted2 = JSON.parse(raw2 as string)
+      expect(persisted2.state.language).toBe('es')
+    })
   })
 })

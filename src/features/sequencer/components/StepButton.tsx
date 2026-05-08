@@ -1,5 +1,7 @@
 'use client';
 
+import { useTranslation } from '@lib/i18n';
+
 const stepColors: Record<string, { bg: string; glow: string }> = {
   kick: { bg: '#00ffc8', glow: 'rgba(0,255,200,0.3)' },
   snare: { bg: '#ffaa00', glow: 'rgba(255,170,0,0.3)' },
@@ -15,6 +17,7 @@ interface StepButtonProps {
 }
 
 export function StepButton({ on, active, tag, onClick }: StepButtonProps) {
+  const t = useTranslation();
   const color = stepColors[tag] ?? stepColors.default;
 
   return (
@@ -32,7 +35,7 @@ export function StepButton({ on, active, tag, onClick }: StepButtonProps) {
         boxShadow: on ? `0 0 6px ${color.glow}` : 'none',
         transform: on && active ? 'scaleY(1.08)' : 'scaleY(1)',
       }}
-      aria-label="Toggle step"
+      aria-label={t('step.toggleLabel')}
     />
   );
 }

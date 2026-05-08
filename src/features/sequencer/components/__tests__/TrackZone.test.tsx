@@ -23,6 +23,7 @@ describe('TrackZone — TASK-03 counter visibility', () => {
       currentCode: 'stack(...)',
       turns: [],
       isCodeManuallyEdited: false,
+      language: 'es',
     })
   })
 

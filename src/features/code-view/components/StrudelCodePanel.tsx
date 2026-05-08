@@ -3,6 +3,7 @@
 import dynamic from 'next/dynamic';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSessionStore } from '@store/sessionStore';
+import { useTranslation } from '@lib/i18n';
 import {
   parseStrudelToTrackJson,
   type UseStrudelResult,
@@ -56,6 +57,7 @@ function getSyntaxErrorMessage(code: string): string | null {
  * @see EC-006 Código inválido → error inline no bloqueante, audio anterior intacto
  */
 export function StrudelCodePanel({ strudel }: StrudelCodePanelProps) {
+  const t = useTranslation();
   const currentCode = useSessionStore((s) => s.currentCode);
   const tracks = useSessionStore((s) => s.tracks);
   const isPlaying = useSessionStore((s) => s.isPlaying);
@@ -113,7 +115,7 @@ export function StrudelCodePanel({ strudel }: StrudelCodePanelProps) {
       try {
         const syntaxError = getSyntaxErrorMessage(newCode);
         if (syntaxError) {
-          setCodeError(`Error de sintaxis: ${syntaxError}`);
+          setCodeError(`${t('editor.syntaxError')}: ${syntaxError}`);
           return;
         }
 
@@ -145,7 +147,7 @@ export function StrudelCodePanel({ strudel }: StrudelCodePanelProps) {
         setManualCode(newCode);
       } catch (err) {
         // EC-006: capturar error, informar, mantener el audio anterior (BR-001)
-        setCodeError(err instanceof Error ? err.message : 'Error de sintaxis en el código');
+        setCodeError(err instanceof Error ? err.message : t('editor.runtimeError'));
       }
     }, 600);
   }
@@ -203,7 +205,7 @@ export function StrudelCodePanel({ strudel }: StrudelCodePanelProps) {
               onChange={handleEditorChange}
               onFocus={() => setIsFocused(true)}
               onBlur={() => setIsFocused(false)}
-              ariaLabel="Código Strudel editable"
+              ariaLabel={t('editor.editableLabel')}
               enableHapHighlighting={hapEnabled}
               highlightingEnabled={highlightingEnabled}
             />
@@ -216,8 +218,8 @@ export function StrudelCodePanel({ strudel }: StrudelCodePanelProps) {
             onBlur={() => setIsFocused(false)}
             className="w-full p-3 rounded-[8px] border border-[var(--border)] bg-[var(--surface)] font-[JetBrains_Mono,monospace] text-[12px] text-[var(--cyan)] resize-none focus:border-[var(--border-active)] focus:outline-none"
             style={{ height: '200px' }}
-            placeholder="Escribe código Strudel aquí..."
-            aria-label="Código Strudel editable"
+            placeholder={t('editor.placeholder')}
+            aria-label={t('editor.editableLabel')}
           />
         )}
 

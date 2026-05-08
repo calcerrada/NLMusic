@@ -1,13 +1,15 @@
 'use client';
 
 import { useBeatClock } from '@features/audio';
+import { useTranslation } from '@lib/i18n';
 
 export function BarIndicator() {
+  const t = useTranslation();
   const { beat } = useBeatClock();
 
   return (
     <div className="flex items-center gap-1.5">
-      <span className="text-[9px] uppercase tracking-[0.16em] text-[var(--text-muted)]">Bar</span>
+      <span className="text-[9px] uppercase tracking-[0.16em] text-[var(--text-muted)]">{t('transport.barLabel')}</span>
       {Array.from({ length: 4 }).map((_, index) => {
         const stateClass =
           index < beat

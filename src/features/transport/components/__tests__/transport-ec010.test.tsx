@@ -12,7 +12,7 @@ vi.mock('@store/sessionStore', () => ({
   useSessionStore: vi.fn(),
 }))
 
-const DISABLED_REASON = 'Motor de audio no disponible. Recarga la pagina o prueba otro navegador.'
+const DISABLED_REASON = 'Motor de audio no disponible. Recarga la página o prueba otro navegador.'
 
 // Default store state for component tests
 const defaultStoreState = {
@@ -21,6 +21,10 @@ const defaultStoreState = {
   currentCode: 's("bd").gain(0.85).slow(4).cpm(138.00)',
   bpm: 138,
   setBpm: vi.fn(),
+  // TASK-13: useTranslation reads language from the store; PlayControls and TransportBar both
+  // call useTranslation(), so the mock must include language/setLanguage or the selector crashes.
+  language: 'es' as 'es' | 'en',
+  setLanguage: vi.fn(),
 }
 
 function mockStore(overrides: Partial<typeof defaultStoreState> = {}) {
@@ -234,5 +238,55 @@ describe('TransportBar — EC-010: engine status indicator', () => {
 
     expect(screen.getByLabelText('Play')).not.toBeDisabled()
     expect(screen.getByLabelText('Stop')).not.toBeDisabled()
+  })
+})
+
+describe('TransportBar — TASK-13: language selector', () => {
+  beforeEach(() => {
+    mockStore()
+    vi.clearAllMocks()
+  })
+
+  it('renders both ES and EN selector buttons', () => {
+    render(<TransportBar strudel={makeStrudel()} />)
+
+    expect(screen.getByRole('button', { name: 'es' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'en' })).toBeInTheDocument()
+  })
+
+  it('clicking EN button calls setLanguage("en") without page reload', () => {
+    const setLanguageMock = vi.fn()
+    mockStore({ setLanguage: setLanguageMock })
+    render(<TransportBar strudel={makeStrudel()} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'en' }))
+
+    expect(setLanguageMock).toHaveBeenCalledWith('en')
+    expect(setLanguageMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('clicking ES button calls setLanguage("es") without page reload', () => {
+    const setLanguageMock = vi.fn()
+    mockStore({ setLanguage: setLanguageMock })
+    render(<TransportBar strudel={makeStrudel()} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'es' }))
+
+    expect(setLanguageMock).toHaveBeenCalledWith('es')
+    expect(setLanguageMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('shows Spanish engine-status text when language is "es"', () => {
+    mockStore({ language: 'es' })
+    render(<TransportBar strudel={makeStrudel({ isReady: true })} />)
+
+    expect(screen.getByText('● Listo')).toBeInTheDocument()
+  })
+
+  it('shows English engine-status text when language is "en"', () => {
+    mockStore({ language: 'en' })
+    render(<TransportBar strudel={makeStrudel({ isReady: true })} />)
+
+    expect(screen.getByText('● Ready')).toBeInTheDocument()
   })
 })

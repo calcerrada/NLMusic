@@ -3,7 +3,27 @@
 import { create } from "zustand";
 import { devtools, persist } from "zustand/middleware";
 import type { Track, TrackJSON } from "@lib/types";
+import type { Language } from "@lib/i18n";
 import { compileToStrudel } from "@features/audio/compiler";
+
+/**
+ * Detecta el idioma preferido del navegador con fallback seguro.
+ *
+ * Algoritmo:
+ * 1. Si navigator.language comienza con 'en' → retorna 'en'
+ * 2. Cualquier otro caso (incluyendo 'es', 'fr', 'de', ...) → fallback a 'es'
+ * 3. Si no existe navigator (SSR) → fallback a 'es'
+ *
+ * Esta función se ejecuta solo una vez al inicializar el store.
+ * El cambio de idioma posterior es manual vía setLanguage().
+ *
+ * @returns 'es' o 'en' según navigator.language o fallback a 'es'
+ * @see TASK-13 Multiidioma UI — detección automática del navegador
+ */
+function detectLanguage(): Language {
+  if (typeof navigator === 'undefined') return 'es'
+  return navigator.language.startsWith('en') ? 'en' : 'es'
+}
 
 type ActiveTab = "sequencer" | "code" | "config";
 export type UiState = "idle" | "loading" | "playing" | "paused" | "error";
@@ -33,6 +53,7 @@ interface PersistedState {
   editorMode: EditorMode;
   highlightingEnabled: boolean;
   hapVisualizationEnabled: boolean;
+  language: Language;
 }
 
 export interface SessionStore {
@@ -50,6 +71,7 @@ export interface SessionStore {
   editorMode: EditorMode;
   highlightingEnabled: boolean;
   hapVisualizationEnabled: boolean;
+  language: Language;
   promptDraft: string | null;
 
   setTracks: (tracks: Track[]) => void;
@@ -80,6 +102,8 @@ export interface SessionStore {
   setEditorMode: (mode: EditorMode) => void;
   setHighlightingEnabled: (enabled: boolean) => void;
   setHapVisualizationEnabled: (enabled: boolean) => void;
+  // TASK-13: cambio de idioma manual — causa rerender inmediato sin reload
+  setLanguage: (lang: Language) => void;
   setPromptDraft: (text: string | null) => void;
 }
 
@@ -126,6 +150,7 @@ export const useSessionStore = create<SessionStore>()(
         editorMode: "advanced",
         highlightingEnabled: true,
         hapVisualizationEnabled: true,
+        language: detectLanguage(),
         promptDraft: null,
 
         // EC-007: al eliminar la última pista forzamos IDLE y detenemos reproducción.
@@ -380,6 +405,16 @@ export const useSessionStore = create<SessionStore>()(
          */
         setHapVisualizationEnabled: (enabled) => set({ hapVisualizationEnabled: enabled }),
         /**
+         * Cambia el idioma de la UI de forma inmediata.
+         *
+         * El nuevo idioma persiste en localStorage automaticamente.
+         * Causa un rerender global sin recargar la pagina — todos los
+         * componentes que usan useTranslation() se actualizan instantaneamente.
+         *
+         * @see TASK-13 Multiidioma UI — selector discreto en TransportBar
+         */
+        setLanguage: (lang) => set({ language: lang }),
+        /**
          * Buffer temporal para insertar ejemplos desde ConfigTab en PromptBox sin auto-submit.
          *
          * @see BR-010 Prefill no equivale a generar patron
@@ -388,7 +423,7 @@ export const useSessionStore = create<SessionStore>()(
       }),
       {
         name: "nlmusic-session",
-        // TASK-12: preferencias del editor persisten entre sesiones via localStorage.
+        // TASK-12/TASK-13: editor preferences and language persist between sessions.
         partialize: (state): PersistedState => ({
           bpm: state.bpm,
           tracks: state.tracks,
@@ -396,6 +431,7 @@ export const useSessionStore = create<SessionStore>()(
           editorMode: state.editorMode,
           highlightingEnabled: state.highlightingEnabled,
           hapVisualizationEnabled: state.hapVisualizationEnabled,
+          language: state.language,
         }),
       },
     ),

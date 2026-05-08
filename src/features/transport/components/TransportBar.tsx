@@ -1,6 +1,8 @@
 'use client';
 
 import { useSessionStore } from '@store/sessionStore';
+import type { Language } from '@lib/i18n';
+import { useTranslation } from '@lib/i18n';
 import type { UseStrudelResult } from '@features/audio';
 import { PlayControls } from './PlayControls';
 import { BpmControl } from './BpmControl';
@@ -20,18 +22,19 @@ interface TransportBarProps {
  * @see EC-010 Motor no disponible — controles deshabilitados con tooltip explicativo
  */
 export function TransportBar({ strudel }: TransportBarProps) {
+  const t = useTranslation();
   const hasInitError = strudel.initError !== null;
   const isPlaying = useSessionStore((s) => s.isPlaying);
-  const disabledReason = hasInitError
-    ? 'Motor de audio no disponible. Recarga la pagina o prueba otro navegador.'
-    : undefined;
+  const language = useSessionStore((s) => s.language);
+  const setLanguage = useSessionStore((s) => s.setLanguage);
+  const disabledReason = hasInitError ? t('transport.audioError') : undefined;
 
   // EC-010: indicador discreto de estado del motor junto al logo
   const engineIndicator = strudel.initError !== null
-    ? <span className="text-[10px] text-[var(--red)]">✕ Error</span>
+    ? <span className="text-[10px] text-[var(--red)]">{t('transport.audioErrorBadge')}</span>
     : strudel.isReady
-      ? <span className="text-[10px] text-[var(--cyan)]">● Listo</span>
-      : <span className="text-[10px] text-[var(--text-dim)]">○ Iniciando…</span>;
+      ? <span className="text-[10px] text-[var(--cyan)]">{t('transport.audioReady')}</span>
+      : <span className="text-[10px] text-[var(--text-dim)]">{t('transport.audioInit')}</span>;
 
   return (
     <header
@@ -88,6 +91,24 @@ export function TransportBar({ strudel }: TransportBarProps) {
         </div>
 
         <BarIndicator />
+
+        {/* TASK-13: language selector — discrete, right-aligned */}
+        <div
+          className="flex items-center gap-1"
+          style={{ position: 'absolute', right: 16, top: '50%', transform: 'translateY(-50%)' }}
+        >
+          {(['es', 'en'] as Language[]).map((lang) => (
+            <button
+              key={lang}
+              type="button"
+              onClick={() => setLanguage(lang)}
+              className="text-[10px] uppercase tracking-[0.1em] transition-colors"
+              style={{ color: language === lang ? 'var(--text)' : 'var(--text-muted)' }}
+            >
+              {lang}
+            </button>
+          ))}
+        </div>
       </div>
     </header>
   );

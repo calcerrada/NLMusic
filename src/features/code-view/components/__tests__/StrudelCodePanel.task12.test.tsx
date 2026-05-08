@@ -59,6 +59,7 @@ describe('StrudelCodePanel TASK-12 editor mode toggle', () => {
       highlightingEnabled: true,
       hapVisualizationEnabled: true,
       isCodeManuallyEdited: false,
+      language: 'es',
     })
   })
 

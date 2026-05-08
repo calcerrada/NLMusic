@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Play, Square } from 'lucide-react';
 import { useSessionStore } from '@store/sessionStore';
+import { useTranslation } from '@lib/i18n';
 import type { UseStrudelResult } from '@features/audio';
 
 interface PlayControlsProps {
@@ -23,6 +24,7 @@ interface PlayControlsProps {
  * @see EC-010 Motor no disponible — botones deshabilitados con tooltip
  */
 export function PlayControls({ strudel, disabled = false, disabledReason }: PlayControlsProps) {
+  const t = useTranslation();
   const { play, stop, isReady } = strudel;
   const isPlaying = useSessionStore((s) => s.isPlaying);
   const setPlaying = useSessionStore((s) => s.setPlaying);
@@ -92,7 +94,7 @@ export function PlayControls({ strudel, disabled = false, disabledReason }: Play
     <div className="flex items-center gap-3 mr-3">
       <button
         type="button"
-        aria-label="Stop"
+        aria-label={t('transport.stop')}
         title={disabledReason}
         disabled={disabled}
         onClick={handleStop}
@@ -109,7 +111,7 @@ export function PlayControls({ strudel, disabled = false, disabledReason }: Play
 
       <button
         type="button"
-        aria-label="Play"
+        aria-label={t('transport.play')}
         title={disabledReason}
         disabled={disabled}
         onClick={() => void handlePlayToggle()}

@@ -1,3 +1,7 @@
+'use client';
+
+import { useTranslation } from '@lib/i18n';
+
 /**
  * Referencia visible de shortcuts del PromptBox para reducir errores de envio.
  * Refuerza el contrato Enter/Shift+Enter de la interaccion principal.
@@ -5,14 +9,15 @@
  * @see BR-010 El envio de prompt requiere accion explicita del usuario
  */
 export function KeyboardShortcuts() {
+  const t = useTranslation();
   return (
     <section>
       <h2 className="mb-3 text-[10px] uppercase tracking-[0.12em] text-[var(--text-muted)]">
-        Atajos de teclado
+        {t('config.shortcuts')}
       </h2>
       <div className="rounded-[8px] border border-[var(--border)] bg-[var(--surface2)] px-4 py-3 flex flex-col gap-2">
-        <ShortcutRow keys={['Enter']} description="Enviar prompt" />
-        <ShortcutRow keys={['Shift', 'Enter']} description="Nueva línea en el prompt" />
+        <ShortcutRow keys={['Enter']} description={t('config.shortcutSend')} />
+        <ShortcutRow keys={['Shift', 'Enter']} description={t('config.shortcutNewLine')} />
       </div>
     </section>
   );

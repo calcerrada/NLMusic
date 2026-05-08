@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { SendHorizontal, TriangleAlert, RotateCcw } from "lucide-react";
 import { usePatternGen } from "../hooks/usePatternGen";
 import { useSessionStore } from "@store/sessionStore";
+import { useTranslation } from "@lib/i18n";
 
 interface PromptBoxProps {
   motorAvailable?: boolean;
@@ -21,6 +22,7 @@ interface PromptBoxProps {
 // EC-010: motor no disponible → toda la entrada deshabilitada
 // BR-003: estado ERROR → banner no bloqueante + botón Reintentar
 export function PromptBox({ motorAvailable = true }: PromptBoxProps) {
+  const t = useTranslation();
   const [prompt, setPrompt] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const { generate, retry, isLoading, error, info } = usePatternGen();
@@ -39,9 +41,7 @@ export function PromptBox({ motorAvailable = true }: PromptBoxProps) {
 
   const isError = uiState === "error";
   const inputDisabled = isLoading || !motorAvailable;
-  const disabledReason = !motorAvailable
-    ? "Motor de audio no disponible. Recarga la pagina o prueba otro navegador."
-    : undefined;
+  const disabledReason = !motorAvailable ? t('transport.audioError') : undefined;
 
   const resize = () => {
     const textarea = textareaRef.current;
@@ -88,7 +88,7 @@ export function PromptBox({ motorAvailable = true }: PromptBoxProps) {
               className="flex items-center gap-1 rounded-[5px] border border-[rgba(255,68,102,0.4)] bg-[rgba(255,68,102,0.12)] px-2 py-1 text-[10px] text-[var(--red)] transition-colors hover:bg-[rgba(255,68,102,0.2)] disabled:opacity-40"
             >
               <RotateCcw size={10} strokeWidth={2} />
-              Reintentar
+              {t('prompt.retry')}
             </button>
           </div>
         ) : null}
@@ -109,11 +109,7 @@ export function PromptBox({ motorAvailable = true }: PromptBoxProps) {
             title={disabledReason}
             ref={textareaRef}
             className="prompt-input max-h-[80px] min-h-[20px] flex-1 resize-none bg-transparent text-[13px] leading-[1.35] text-[var(--text)] placeholder:text-[var(--text-dim)] focus:outline-none disabled:cursor-not-allowed"
-            placeholder={
-              motorAvailable
-                ? "Ej: kick 909 en 4x4 techno oscuro, añade snare en los tiempos 2 y 4…"
-                : "Motor de audio no disponible — recarga la página"
-            }
+            placeholder={motorAvailable ? t('prompt.placeholder') : t('prompt.audioDisabled')}
             value={prompt}
             onChange={(event) => setPrompt(event.target.value)}
             onInput={resize}
@@ -131,16 +127,16 @@ export function PromptBox({ motorAvailable = true }: PromptBoxProps) {
             disabled={inputDisabled || !prompt.trim()}
             title={disabledReason}
             className="h-[34px] w-[34px] rounded-[7px] border border-[var(--border-active)] bg-[rgba(0,255,200,0.12)] text-[var(--cyan)] transition-all hover:bg-[rgba(0,255,200,0.2)] hover:shadow-[0_0_10px_rgba(0,255,200,0.32)] disabled:opacity-45"
-            aria-label="Enviar prompt"
+            aria-label={t('prompt.submit')}
           >
             <SendHorizontal size={16} strokeWidth={1.5} className="text-current" />
           </button>
         </div>
 
         <p className="mt-2 text-[9px] text-[var(--text-muted)]">
-          <span className="text-[rgba(0,255,200,0.6)]">Enter</span> para enviar
+          <span className="text-[rgba(0,255,200,0.6)]">Enter</span>{' '}
           · <span className="text-[rgba(0,255,200,0.6)]">Shift+Enter</span>{" "}
-          nueva línea
+          {t('prompt.newLine')}
         </p>
         {!isError && info ? (
           <p className="mt-1 text-[10px] text-[var(--amber)]">{info}</p>

@@ -75,6 +75,7 @@ describe('StrudelCodePanel TASK-08 editable sync', () => {
       lastError: null,
       lastPrompt: null,
       isCodeManuallyEdited: false,
+      language: 'es',
     })
   })
 
