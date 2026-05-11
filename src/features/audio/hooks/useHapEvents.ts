@@ -5,8 +5,9 @@ import type { EditorView } from '@codemirror/view';
 import type { HapState } from './useStrudel';
 
 const HAP_FLASH_STYLE =
-  'background-color:rgba(0,255,200,0.18);border-radius:2px;' +
-  'transition:background-color 150ms ease-out;';
+  'background-color:rgba(0,255,200,0.35);' +
+  'outline:1px solid rgba(0,255,200,0.7);' +
+  'border-radius:2px;';
 const MAX_ACTIVE_HAPS = 64;
 
 type HighlightApi = {
@@ -72,8 +73,8 @@ export function useHapEvents({ isPlaying, fallbackStep, getView, getHapState }: 
       try {
         const mod = await import('@lib/strudelHighlight');
         highlightApiRef.current = {
-          updateMiniLocations: mod.updateMiniLocations,
-          highlightMiniLocations: mod.highlightMiniLocations,
+          updateMiniLocations: (mod as unknown as HighlightApi).updateMiniLocations,
+          highlightMiniLocations: (mod as unknown as HighlightApi).highlightMiniLocations,
         };
       } catch {
         // EC-006/TASK-11 degraded mode: missing codemirror bridge should not crash tests/runtime.
@@ -190,7 +191,8 @@ export function useHapEvents({ isPlaying, fallbackStep, getView, getHapState }: 
       }
 
       const pat = pattern as { queryArc?: (a: number, b: number) => HapLike[] } | null;
-      const queryArc = pat?.queryArc;
+      // .bind(pat) preserves 'this' — extracting the method loses it and queryArc calls this.query() internally
+      const queryArc = pat?.queryArc?.bind(pat);
 
       if (typeof queryArc !== 'function') {
         // TASK-11 degraded mode: no hap API, keep a minimal visual cue using transport step.
