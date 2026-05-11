@@ -177,6 +177,7 @@ export function useStrudel(): UseStrudelResult {
       } else {
         _lastMiniLocations = [];
       }
+
     } catch (error) {
       // EC-006: normaliza errores del runtime para que el panel muestre feedback legible.
       if (error instanceof Error) {

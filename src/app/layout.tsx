@@ -26,7 +26,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={`${jetbrainsMono.variable} ${dmSans.variable} bg-bg text-text`}>{children}</body>
+      <body suppressHydrationWarning className={`${jetbrainsMono.variable} ${dmSans.variable} bg-bg text-text`}>{children}</body>
     </html>
   );
 }
