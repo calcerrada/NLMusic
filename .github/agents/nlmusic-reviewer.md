@@ -113,13 +113,12 @@ Cambios requeridos:
 Restricciones:
 - No tocar archivos fuera de los listados
 - No introducir features nuevas
+- No hacer revision de test unitarios.
 - Preservar BR-001 en todos los caminos afectados
 
 Verificacion obligatoria:
-1. Ejecutar tests focalizados de los archivos tocados
-2. Ejecutar tests relacionados por dependencia
-3. Ejecutar build
-4. Reportar evidencia de comandos y resultados
+1. Ejecutar build
+2. Reportar evidencia de comandos y resultados
 
 Salida esperada:
 - Mapeo hallazgo -> cambio aplicado -> evidencia

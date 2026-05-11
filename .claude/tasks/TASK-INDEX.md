@@ -35,7 +35,7 @@ grep -l "^status: pending" .claude/tasks/TASK-*.md
 - [x] **TASK-08** — StrudelCodePanel editable (textarea) · `177f001` · 2026-04-24
 - [x] **TASK-09** — Contexto LLM coherente en modo código · `b870bd0` · 2026-04-27
 - [x] **TASK-10** — Editor Strudel con CodeMirror (syntax highlighting) · `4da9edf` · 2026-04-28
-- [ ] **TASK-11** — Hap highlighting en tiempo real  ← siguiente
+- [x] **TASK-11** — Hap highlighting en tiempo real · `2932b42` · 2026-05-11
 - [x] **TASK-12** — Tercera pestaña config/guía (+ toggle editor avanzado/simple) · `5e655c9` · 2026-05-05
 - [x] **TASK-13** — Multiidioma UI (ES / EN) · `1aacc87` · 2026-05-08
 

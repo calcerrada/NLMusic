@@ -29,9 +29,9 @@ interface StrudelEditorProps {
   disabled?: boolean;
   ariaLabel?: string;
   /**
-   * TASK-11: include the highlightExtension StateFields in the editor.
-   * Must be true for useHapEvents to dispatch decorations; defaults to true.
-   * The extension is inert (no visual effect) when no haps are dispatched.
+   * Inserta los `StateField` que permiten pintar haps sobre rangos concretos del código.
+   * Puede reconfigurarse en caliente sin recrear el `EditorView`, así que no desplaza cursor ni selección.
+   * @see BR-009
    */
   enableHapHighlighting?: boolean;
   /** TASK-12: when false, syntax token colors are removed but editor layout is preserved. */
@@ -41,7 +41,7 @@ interface StrudelEditorProps {
 /**
  * Editor CodeMirror 6 reutilizable para Strudel con la paleta visual de NLMusic.
  * Mantiene la sincronización externa sin reemitir cambios al padre cuando el valor llega desde grid o LLM.
- * No contiene lógica de negocio ni acceso al store.
+ * Expone un `EditorView` imperativo para que TASK-11 decore el código sin llevar flashes al store.
  *
  * @param value - Código Strudel que debe reflejar el editor como fuente externa de verdad.
  * @param onChange - Callback invocado sólo en edición del usuario; el debounce vive fuera.
@@ -59,6 +59,8 @@ export const StrudelEditor = forwardRef<StrudelEditorRef, StrudelEditorProps>(
     const isExternalUpdate = useRef(false);
     const editableCompartment = useRef(new Compartment());
     const highlightCompartment = useRef(new Compartment());
+    // TASK-11: compartimento separado para habilitar/deshabilitar flashes sin remount.
+    const hapHighlightCompartment = useRef(new Compartment());
 
     // TASK-11: expone el EditorView para decoraciones temporales sobre el código.
     useImperativeHandle(ref, () => ({
@@ -89,8 +91,9 @@ export const StrudelEditor = forwardRef<StrudelEditorRef, StrudelEditorProps>(
             highlightCompartment.current.of(highlightingEnabled ? nlmusicSyntaxHighlighting : []),
             strudelExtensions.isBracketMatchingEnabled(true),
             strudelExtensions.isBracketClosingEnabled(true),
-            // TASK-11: StateFields for hap highlighting; inert when no haps are dispatched
-            ...(enableHapHighlighting ? highlightExtension : []),
+            // TASK-11: StateFields for hap highlighting; in a Compartment so toggling
+            // enableHapHighlighting reconfigures them without destroying the editor.
+            hapHighlightCompartment.current.of(enableHapHighlighting ? highlightExtension : []),
             editableCompartment.current.of(EditorView.editable.of(!disabled)),
             ...(ariaLabel
               ? [EditorView.contentAttributes.of({ 'aria-label': ariaLabel })]
@@ -152,6 +155,21 @@ export const StrudelEditor = forwardRef<StrudelEditorRef, StrudelEditorProps>(
         ),
       });
     }, [highlightingEnabled]);
+
+    /**
+     * Reconfigura el highlighting de haps sin desmontar el editor.
+     * Conserva la instancia y evita que los flashes interfieran con la edición activa.
+     * @see BR-009
+     */
+    useEffect(() => {
+      const view = viewRef.current;
+      if (!view) return;
+      view.dispatch({
+        effects: hapHighlightCompartment.current.reconfigure(
+          enableHapHighlighting ? highlightExtension : [],
+        ),
+      });
+    }, [enableHapHighlighting]);
 
     return <div ref={containerRef} style={{ width: '100%' }} />;
   },

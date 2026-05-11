@@ -54,8 +54,17 @@ export function useHapEvents({ isPlaying, fallbackStep, getView, getHapState }: 
   // Track the miniLocations array reference to avoid redundant updateMiniLocations calls
   const lastMiniLocsRef = useRef<[number, number][] | null>(null);
   const highlightApiRef = useRef<HighlightApi | null>(null);
+  // Read fallbackStep via ref so changing it does not restart the RAF loop.
+  const fallbackStepRef = useRef(fallbackStep);
+  useEffect(() => { fallbackStepRef.current = fallbackStep; }, [fallbackStep]);
 
   useEffect(() => {
+    /**
+     * Carga diferida del bridge de CodeMirror para no arrastrarlo antes de que exista editor.
+     * Si falla, el hook cae a modo degradado y mantiene el transporte intacto.
+     * @see BR-001
+     * @see EC-006
+     */
     const ensureHighlightApi = async () => {
       if (highlightApiRef.current) {
         return highlightApiRef.current;
@@ -73,6 +82,11 @@ export function useHapEvents({ isPlaying, fallbackStep, getView, getHapState }: 
       return highlightApiRef.current;
     };
 
+    /**
+     * Limpia todos los flashes activos al pausar, desmontar o perder la ruta de haps.
+     * Evita decoraciones colgadas entre ciclos sin tocar estado React ni scheduler.
+     * @see BR-009
+     */
     const clearHighlights = (view: EditorView | null) => {
       if (!view) {
         return;
@@ -164,8 +178,8 @@ export function useHapEvents({ isPlaying, fallbackStep, getView, getHapState }: 
         return;
       }
 
-      // Update static mark positions when miniLocations change (new evaluate / code edit)
-      // Identity check is enough because _lastMiniLocations is replaced by reference on each evaluate.
+      // BR-009: reubica marcas solo cuando el código recompilado entrega otra referencia.
+      // La identidad basta porque useStrudel reemplaza miniLocations tras cada evaluate válido.
       if (api && miniLocations !== lastMiniLocsRef.current) {
         try {
           api.updateMiniLocations(view, miniLocations);
@@ -181,7 +195,7 @@ export function useHapEvents({ isPlaying, fallbackStep, getView, getHapState }: 
       if (typeof queryArc !== 'function') {
         // TASK-11 degraded mode: no hap API, keep a minimal visual cue using transport step.
         try {
-          applyDegradedStepHighlight(view, miniLocations, fallbackStep);
+          applyDegradedStepHighlight(view, miniLocations, fallbackStepRef.current);
         } catch {
           clearHighlights(view);
         }
@@ -192,7 +206,7 @@ export function useHapEvents({ isPlaying, fallbackStep, getView, getHapState }: 
       const t = getTime();
       if (!Number.isFinite(t)) {
         try {
-          applyDegradedStepHighlight(view, miniLocations, fallbackStep);
+          applyDegradedStepHighlight(view, miniLocations, fallbackStepRef.current);
         } catch {
           clearHighlights(view);
         }
@@ -200,8 +214,8 @@ export function useHapEvents({ isPlaying, fallbackStep, getView, getHapState }: 
         return;
       }
 
-      // Small lookbehind window (0.1 cycles) to catch haps whose onset just fired.
-      // Matches the Drawer convention from @strudel/draw.
+      // BR-001: ventana corta hacia atrás para no perder onsets recién disparados
+      // sin aumentar el trabajo por frame ni alterar el timing del audio.
       const begin = Math.max(lastTimeRef.current ?? t - 0.01, t - 0.1);
       lastTimeRef.current = t;
 
@@ -224,7 +238,7 @@ export function useHapEvents({ isPlaying, fallbackStep, getView, getHapState }: 
       } catch {
         // EC-006: if scheduler data fails, degrade to global-step highlight without crashing.
         try {
-          applyDegradedStepHighlight(view, miniLocations, fallbackStep);
+          applyDegradedStepHighlight(view, miniLocations, fallbackStepRef.current);
         } catch {
           clearHighlights(view);
         }
@@ -237,8 +251,8 @@ export function useHapEvents({ isPlaying, fallbackStep, getView, getHapState }: 
 
     return cancelLoop;
     // getView and getHapState are stable references (useCallback with []) — excluded from deps.
-    // isPlaying/fallbackStep drive runtime behavior without touching audio state.
-  }, [isPlaying, fallbackStep, getView, getHapState]);
+    // fallbackStep is read via fallbackStepRef so the loop is not restarted on each transport step.
+  }, [isPlaying, getView, getHapState]);
 }
 
 type HapLike = {

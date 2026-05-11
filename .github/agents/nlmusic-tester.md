@@ -18,6 +18,7 @@ Lee:
 4. `src/lib/types/index.ts`
 5. `.claude/tasks/TASK-INDEX.md`
 6. `.claude/tasks/TASK-XX-*.md`
+7. Archivos de codigo afectados por la task
 
 ## Paso 2 - Identifica que testear
 

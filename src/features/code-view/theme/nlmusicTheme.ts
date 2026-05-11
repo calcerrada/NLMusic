@@ -12,7 +12,8 @@ const editorTheme = EditorView.theme(
       color: 'var(--text)',
       fontSize: '12px',
       fontFamily: "'JetBrains Mono', monospace",
-      // TASK-11: alias used by highlight.mjs as fallback hap outline color
+      // TASK-11: highlight.mjs usa --foreground como color por defecto cuando un hap no trae estilo propio.
+      // Mantener este alias aquí evita que el flash dependa del tema de sintaxis o del contenido del token.
       '--foreground': 'var(--cyan)',
     },
     '.cm-scroller': {

@@ -283,6 +283,54 @@ describe('useHapEvents', () => {
     expect(haps).toHaveLength(0);
   });
 
+  it('does not restart RAF loop when fallbackStep changes during active playback', async () => {
+    const view = {} as EditorView;
+    const miniLocations: [number, number][] = [
+      [0, 1],
+      [2, 3],
+    ];
+    const hapState = makeHapState({
+      pattern: { queryArc: vi.fn(() => []) },
+      miniLocations,
+      getTime: () => 2,
+    });
+
+    // Stable getter references — they must not change across rerenders so that the
+    // main effect's deps ([isPlaying, getView, getHapState]) stay stable and the
+    // only variable is fallbackStep.
+    const getView = () => view;
+    const getHapState = () => hapState;
+
+    const { rerender } = renderHook(
+      ({ fallbackStep }: { fallbackStep: number }) =>
+        useHapEvents({
+          isPlaying: true,
+          fallbackStep,
+          getView,
+          getHapState,
+        }),
+      { initialProps: { fallbackStep: 0 } },
+    );
+
+    await flushMicrotasks();
+
+    await act(async () => {
+      runNextFrame(16);
+    });
+
+    // Baseline after first frame: one updateMiniLocations call
+    expect(updateMiniLocationsMock).toHaveBeenCalledTimes(1);
+    const cancelCallsBaseline = vi.mocked(cancelAnimationFrame).mock.calls.length;
+
+    // Change fallbackStep mid-playback — must NOT restart the RAF loop
+    rerender({ fallbackStep: 7 });
+
+    // No additional cancelAnimationFrame calls means the loop was not cancelled
+    expect(vi.mocked(cancelAnimationFrame).mock.calls.length).toBe(cancelCallsBaseline);
+    // updateMiniLocations must not be called again (caches not invalidated)
+    expect(updateMiniLocationsMock).toHaveBeenCalledTimes(1);
+  });
+
   it('clears highlights when playback stops (PAUSED)', async () => {
     const view = {} as EditorView;
     const hapState = makeHapState({

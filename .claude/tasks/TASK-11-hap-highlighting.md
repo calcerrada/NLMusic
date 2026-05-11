@@ -1,6 +1,8 @@
 ---
 id: TASK-11
-status: pending
+status: done
+completed_commit: 2932b42
+completed_date: 2026-05-11
 ---
 
 # TASK-11 — Hap highlighting (visualización de pasos tocándose)
@@ -205,6 +207,9 @@ Se importa `@strudel/transpiler` en paralelo con `@strudel/web`. La función `tr
 - Build de producción (`npm run build`): OK.
 - Lint (`npm run lint`): sin errores (warnings preexistentes fuera del alcance de TASK-11).
 
-Decisión de tracking:
+### Correcciones de auditoría (2026-05-11)
 
-- **TASK-11 se mantiene en `pending` por decisión explícita de tracking**, aunque la implementación y validaciones técnicas estén realizadas.
+- **StrudelEditor**: `enableHapHighlighting` ahora usa `hapHighlightCompartment` (Compartment) para reconfigurarse en caliente sin remount. El spread directo `...(enableHapHighlighting ? highlightExtension : [])` fue reemplazado por `hapHighlightCompartment.current.of(...)` + effect de reconfigure, igual que `editableCompartment` y `highlightCompartment`.
+- **useHapEvents**: `fallbackStep` extraído a `fallbackStepRef` para que el RAF loop no se reinicie en cada step del transporte. Eliminado de las deps del efecto principal.
+- **Tests**: añadido test en `useHapEvents.test.ts` que verifica el no-reinicio del loop al cambiar `fallbackStep` (fallaba antes de la corrección, pasa después). Añadido `StrudelEditor.hap.test.tsx` con 3 tests focalizados del toggle en caliente sobre el EditorView real.
+- **Evidencia**: `vitest run` 50/50 OK · `npm run build` OK.

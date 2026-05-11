@@ -72,10 +72,21 @@ export function StrudelCodePanel({ strudel }: StrudelCodePanelProps) {
   const editorRef = useRef<StrudelEditorRef>(null);
   // Stable getter so useHapEvents doesn't re-run on every render
   const getView = useCallback(() => editorRef.current?.view ?? null, []);
-  // Gate hap highlighting: only active in advanced mode with the toggle ON.
-  // Passing isPlaying=false when disabled causes useHapEvents to cancel the RAF loop
-  // and clear all decorations — purely visual, BR-001 guarantee preserved.
+  /**
+   * Activa el highlighting solo cuando existe un CodeMirror real y el usuario no lo ha deshabilitado.
+   * Al cerrar esta compuerta, `useHapEvents` cancela el RAF y limpia decoraciones sin tocar el audio.
+   * @see BR-001
+   * @see BR-009
+   */
   const hapEnabled = editorMode === 'advanced' && hapVisualizationEnabled;
+
+  /**
+   * Puente visual entre el runtime de Strudel y el editor.
+   * Consume el reloj real cuando hay haps; si no, degrada al paso global del transporte.
+   * @see BR-001
+   * @see BR-009
+   * @see EC-006
+   */
   useHapEvents({
     isPlaying: isPlaying && hapEnabled,
     fallbackStep: transportStep,
