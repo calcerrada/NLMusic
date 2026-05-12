@@ -1,7 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 import { ClaudeAdapter } from '@lib/llm/adapters/claude.adapter';
 import { runV0Pipeline } from '@lib/llm/pipeline';
 import type { SessionContext } from '@lib/types';
+
+const requestBodySchema = z.object({
+  prompt: z.string().min(1).max(2000),
+  context: z.object({
+    turns: z.array(z.object({
+      role: z.enum(['user', 'assistant']),
+      content: z.string().max(500),
+    })).max(40).optional(),
+    previous: z.object({
+      bpm: z.number().int().min(60).max(220),
+      tracks: z.array(z.any()).max(5),
+      strudelCode: z.string().optional(),
+    }).optional(),
+    codeMode: z.object({
+      enabled: z.literal(true),
+      strudelCode: z.string().max(5000),
+      bpmHint: z.number().int().min(60).max(220),
+    }).optional(),
+    language: z.enum(['es', 'en', 'mixed']).optional(),
+  }).optional(),
+});
 
 /**
  * Genera un patrón musical y devuelve un contrato API explícito.
@@ -13,10 +35,17 @@ import type { SessionContext } from '@lib/types';
  */
 export async function POST(req: NextRequest) {
   try {
-    const { prompt, context } = await req.json();
+    const parsed = requestBodySchema.safeParse(await req.json());
+    if (!parsed.success) {
+      return NextResponse.json(
+        { ok: false, error: 'Body inválido', details: parsed.error.flatten() },
+        { status: 400 }
+      );
+    }
+    const { prompt, context } = parsed.data;
 
-    if (typeof prompt !== 'string' || prompt.trim() === '') {
-      // BR-010: prompt vacío o inválido no avanza al pipeline LLM
+    // BR-010: prompt vacío o solo espacios no avanza al pipeline LLM
+    if (!prompt.trim()) {
       return NextResponse.json(
         { ok: false, error: 'Prompt inválido' },
         { status: 400 }

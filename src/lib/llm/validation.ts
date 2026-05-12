@@ -5,6 +5,7 @@ const stepSchema = z.union([z.literal(0), z.literal(1)]);
 const trackSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
+  tag: z.string().min(1).optional(),
   sample: z.string().min(1).optional(),
   steps: z.array(stepSchema).length(16),
   volume: z.number().min(0).max(1),

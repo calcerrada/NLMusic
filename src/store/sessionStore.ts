@@ -89,7 +89,7 @@ export interface SessionStore {
   addTurn: (role: "user" | "assistant", content: string) => void;
   loadPattern: (pattern: TrackJSON) => void;
   // BR-004: acciones incrementales para testing/debug y uso desde applyDelta
-  addTrack: (track: Track) => boolean;
+  addTrack: (track: Track) => void;
   updateTrack: (id: string, patch: Partial<Track>) => boolean;
   // BR-007: eliminar pista — destructivo, irreversible, sin confirmación
   deleteTrack: (id: string) => void;
@@ -297,10 +297,12 @@ export const useSessionStore = create<SessionStore>()(
         loadPattern: (pattern) =>
           set(() => {
             const nextTracks = pattern.tracks.slice(0, 5); // BR-006 defensa
+            // FIX-6: reusar código ya compilado por usePatternGen para evitar doble compilación
+            const code = pattern.strudelCode ?? compileCode(pattern.bpm, nextTracks);
             return {
               bpm: pattern.bpm,
               tracks: nextTracks,
-              currentCode: compileCode(pattern.bpm, nextTracks),
+              currentCode: code,
               isCodeManuallyEdited: false,
               isPlaying: nextTracks.length > 0,
               uiState: nextTracks.length > 0 ? "playing" : "idle",
@@ -308,20 +310,17 @@ export const useSessionStore = create<SessionStore>()(
             };
           }),
 
-        // BR-004/BR-006: añade pista al final; devuelve false si el límite ya fue alcanzado
-        addTrack: (track) => {
-          const { tracks } = get();
-          if (tracks.length >= 5) {
-            return false;
-          }
-          const nextTracks = [...tracks, track];
-          set((state) => ({
-            tracks: nextTracks,
-            currentCode: compileCode(state.bpm, nextTracks),
-            isCodeManuallyEdited: false,
-          }));
-          return true;
-        },
+        // BR-004/BR-006: añade pista al final; no-op si el límite ya fue alcanzado
+        addTrack: (track) =>
+          set((state) => {
+            if (state.tracks.length >= 5) return state;
+            const nextTracks = [...state.tracks, track];
+            return {
+              tracks: nextTracks,
+              currentCode: compileCode(state.bpm, nextTracks),
+              isCodeManuallyEdited: false,
+            };
+          }),
 
         // BR-004: modifica pista por id; devuelve false si no existe (BR-005)
         updateTrack: (id, patch) => {
@@ -427,7 +426,7 @@ export const useSessionStore = create<SessionStore>()(
         partialize: (state): PersistedState => ({
           bpm: state.bpm,
           tracks: state.tracks,
-          turns: state.turns,
+          turns: state.turns.slice(-40),
           editorMode: state.editorMode,
           highlightingEnabled: state.highlightingEnabled,
           hapVisualizationEnabled: state.hapVisualizationEnabled,

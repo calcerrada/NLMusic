@@ -23,28 +23,6 @@ interface StrudelCodePanelProps {
 }
 
 /**
- * Valida si el texto puede compilarse como JavaScript antes de invocar a Strudel.
- * Evita mostrar errores tardíos del motor cuando el problema ya era sintáctico en el editor.
- *
- * @param code - Código Strudel escrito por el usuario.
- * @returns Mensaje de error de sintaxis o `null` cuando el texto es parseable.
- * @see EC-006 El editor informa errores inline sin alterar el audio previo.
- */
-function getSyntaxErrorMessage(code: string): string | null {
-  try {
-    // EC-006: evita evaluate cuando el código no es parseable por JS/Strudel.
-    // Strudel usa sintaxis basada en JavaScript, así que este guard es seguro.
-    new Function(code);
-    return null;
-  } catch (error) {
-    if (error instanceof SyntaxError) {
-      return error.message;
-    }
-    return null;
-  }
-}
-
-/**
  * Panel de código Strudel con editor CodeMirror 6 y sincronización bidireccional.
  *
  * Grid → Editor: cuando el LLM o el usuario modifica un paso, `currentCode` cambia
@@ -124,12 +102,6 @@ export function StrudelCodePanel({ strudel }: StrudelCodePanelProps) {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
       try {
-        const syntaxError = getSyntaxErrorMessage(newCode);
-        if (syntaxError) {
-          setCodeError(`${t('editor.syntaxError')}: ${syntaxError}`);
-          return;
-        }
-
         const parsedPattern = parseStrudelToTrackJson(newCode, tracks);
 
         // EC-010: con motor no funcional, el editor permanece editable pero no evalúa.

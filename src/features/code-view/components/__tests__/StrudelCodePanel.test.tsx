@@ -177,9 +177,11 @@ describe('StrudelCodePanel TASK-08 editable sync', () => {
     expect(useSessionStore.getState().currentCode).toBe(initialCode)
   })
 
-  it('does not call play when the editor code has syntax errors', async () => {
+  it('shows inline error and preserves store code when play throws on syntactically invalid code', async () => {
     const initialCode = useSessionStore.getState().currentCode
-    const playSpy = vi.fn().mockResolvedValue(undefined)
+    // FIX-5: getSyntaxErrorMessage removed — strudel.play() is now called; the engine
+    // throws on invalid syntax and the catch block surfaces the error inline (EC-006)
+    const playSpy = vi.fn().mockRejectedValue(new SyntaxError('Unexpected token ","'))
     const strudel = makeStrudel(playSpy)
 
     render(<StrudelCodePanel strudel={strudel} />)
@@ -190,8 +192,8 @@ describe('StrudelCodePanel TASK-08 editable sync', () => {
 
     await flushDebounce()
 
-    expect(playSpy).not.toHaveBeenCalled()
-    expect(screen.getByRole('alert')).toHaveTextContent('Error de sintaxis')
+    expect(playSpy).toHaveBeenCalledWith('stack(,)', false)
+    expect(screen.getByRole('alert')).toHaveTextContent('Unexpected token')
     expect(useSessionStore.getState().currentCode).toBe(initialCode)
   })
 
