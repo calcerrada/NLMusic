@@ -1,6 +1,8 @@
 ---
 id: TASK-14
-status: pending
+status: done
+completed_commit: 46f661b
+completed_date: 2026-05-12
 ---
 
 # TASK-14 — Correctness: hotfixes y robustez del contrato

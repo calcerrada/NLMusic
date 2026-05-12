@@ -51,7 +51,7 @@ grep -l "^status: pending" .claude/tasks/TASK-*.md
 
 ## Sprint de Refactorización — Orden de ejecución recomendado
 
-- [ ] **TASK-14** — Correctness: hotfixes y robustez del contrato _(sin dependencias, ejecutar primero)_
+- [x] **TASK-14** — Correctness: hotfixes y robustez del contrato · `46f661b` · 2026-05-12
 - [ ] **TASK-15** — Store: División en Zustand slices _(depende de TASK-14 — riesgo alto, ejecutar último del sprint)_
 - [ ] **TASK-16** — StrudelContext: prop drilling + estado mutable de módulo _(depende de TASK-14)_
 - [ ] **TASK-17** — Performance: suscripciones reactivas y prompt caching _(depende de TASK-14)_
