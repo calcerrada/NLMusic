@@ -117,8 +117,12 @@ Consulta `nlmusic-spec.md` únicamente si ocurre alguno de estos casos:
 
 - Multiidioma UI ES / EN: selector discreto en TransportBar, detección del navegador, diccionario tipado centralizado, hook `useTranslation` reactivo, persistencia en localStorage (TASK-13)
 
-**Pendiente Sprint 2 (orden de ejecución):**
-- TASK-11 — Hap highlighting en tiempo real (flash de tokens al sonar) sobre el editor CodeMirror
+**Sprint de Refactorización (pendiente, ejecutar antes del Sprint 3):**
+- TASK-14 — Correctness hotfixes: TOCTOU en addTrack, tag en Zod schema, turns limit, validación API, new Function, double compile
+- TASK-15 — Store: split en slices Zustand (riesgo alto — ejecutar último del sprint)
+- TASK-16 — StrudelContext: eliminar prop drilling y estado mutable de módulo en useStrudel
+- TASK-17 — Performance: over-subscriptions en usePatternGen, isLoading duplicado, prompt caching Claude
+- TASK-18 — UI cleanup: Oscilloscope component, tabs DRY, Tailwind consistency, 'use client' cleanup
 
 **Nuevas dependencias añadidas (TASK-10):**
 - `codemirror@6.0.2`, `@codemirror/state`, `@codemirror/view`, `@codemirror/language`, `@codemirror/commands`, `@codemirror/lang-javascript`, `@strudel/codemirror@1.3.0`
@@ -136,5 +140,4 @@ Consulta `nlmusic-spec.md` únicamente si ocurre alguno de estos casos:
 - `src/lib/i18n/useTranslation.ts` — hook reactivo que lee `language` del store
 - `src/lib/i18n/index.ts` — barrel export
 
- El índice maestro
-con dependencias y criterios de revisión está en `.claude/tasks/TASK-INDEX.md`.
+El índice maestro con dependencias y criterios de revisión está en `.claude/tasks/TASK-INDEX.md`.

@@ -1,17 +1,19 @@
-# TASK-14 — Schema: TrackParams
+# TASK-19 — Schema: TrackParams
 
 | Campo | Valor |
 |---|---|
-| Task-ID | TASK-14 |
+| Task-ID | TASK-19 |
 | Sprint | 3 |
 | Estado | TODO |
-| Prioridad | P0 — bloqueante para TASK-15, TASK-16, TASK-17, TASK-18 |
+| Prioridad | P0 — bloqueante para TASK-20, TASK-21, TASK-22, TASK-23 |
 | Estimación | 2h |
-| Dependencias | Ninguna |
+| Dependencias | TASK-14..18 (sprint de refactorización) |
 | Capacidades relacionadas | CAP-NLM-014 · Sintetizador por pista |
 
 > Base de datos del Sprint 3. Define el contrato de tipos que todo el resto del sprint consume.
 > No genera UI ni lógica de audio — solo tipos, validación y contratos.
+>
+> **Nota:** Renumerada desde TASK-14 para dar paso al sprint de refactorización (TASK-14..18).
 
 ---
 
@@ -20,7 +22,7 @@
 El `Track` actual solo puede representar ritmo (16 pasos on/off), volumen, mute y solo.
 Para soportar el sintetizador por pista (osciladores, ADSR, filtros, efectos) necesitamos
 un campo opcional `params` en el tipo `Track`. Este campo es el contrato compartido entre
-el compilador (TASK-15), el agente LLM (TASK-16) y la UI de acordeón (TASK-17/18).
+el compilador (TASK-20), el agente LLM (TASK-21) y la UI de acordeón (TASK-22/23).
 
 La extensión es **aditiva y no breaking**: tracks sin `params` se comportan exactamente
 como hasta ahora.
@@ -54,7 +56,7 @@ interface TrackParams {
   room?: number            // 0–1 (reverb send)
   delay?: number           // 0–1 (delay wet)
   delaytime?: number       // 0–1 (segundos)
-  delayfeedback?: number   // 0–0.9 (hard cap, nunca ≥ 1)
+  delayfeedback?: number   // 0–0.9 (hard cap, nunca >= 1)
   pan?: number             // 0–1 (0=izq, 0.5=centro, 1=der)
 }
 ```
@@ -113,7 +115,7 @@ compilador, store y componentes UI puedan importarlo sin paths relativos profund
 
 **AC-7 — Sin regresiones**
 Todos los tests existentes pasan sin modificación.
-El schema Zod sigue rechazando tracks inválidos (steps ≠ 16, volume fuera de rango, etc.).
+El schema Zod sigue rechazando tracks inválidos (steps != 16, volume fuera de rango, etc.).
 
 ---
 
@@ -123,14 +125,14 @@ El schema Zod sigue rechazando tracks inválidos (steps ≠ 16, volume fuera de 
 se compila igual que antes.
 
 **BR-NEW-002** — `note` solo tiene efecto cuando `synth !== 'sample'` y
-`synth !== undefined`. El compilador (TASK-15) ignora `note` si `synth` es `'sample'`
+`synth !== undefined`. El compilador (TASK-20) ignora `note` si `synth` es `'sample'`
 o no está definido.
 
 **BR-NEW-003** — `delayfeedback` tiene hard cap en `0.9` en el schema Zod.
-El compilador nunca debe emitir `.delayfeedback(n)` con n ≥ 1 — bucle infinito de audio.
+El compilador nunca debe emitir `.delayfeedback(n)` con n >= 1 — bucle infinito de audio.
 
 **BR-NEW-004** — `delayTimeMode` es preferencia global de sesión, no por pista.
-Cuando vale `'musical'`, la UI de acordeón (TASK-17) muestra un selector con
+Cuando vale `'musical'`, la UI de acordeón (TASK-22) muestra un selector con
 valores `0.125 | 0.25 | 0.5 | 0.75`. Cuando vale `'free'`, muestra un slider 0–1.
 El valor almacenado en `TrackParams.delaytime` es siempre numérico en ambos casos.
 
@@ -156,21 +158,21 @@ Añadir en `src/lib/llm/__tests__/validation.test.ts`
 (o crear el archivo si no existe):
 
 ```typescript
-describe('TASK-14: TrackParams validation', () => {
+describe('TASK-19: TrackParams validation', () => {
   it('acepta un track sin params (retrocompatibilidad)', () => {
-    // track válido sin campo params → no lanza
+    // track válido sin campo params -> no lanza
   })
 
   it('acepta params parciales (todos los campos son opcionales)', () => {
-    // track con params: { room: 0.5 } → válido
+    // track con params: { room: 0.5 } -> válido
   })
 
   it('rechaza delayfeedback >= 1', () => {
-    // params: { delayfeedback: 1.0 } → ZodError
+    // params: { delayfeedback: 1.0 } -> ZodError
   })
 
   it('rechaza filterQ > 20', () => {
-    // params: { filterQ: 25 } → ZodError
+    // params: { filterQ: 25 } -> ZodError
   })
 
   it('acepta patch de update con params parcial', () => {
@@ -183,9 +185,9 @@ describe('TASK-14: TrackParams validation', () => {
 
 ## Notas para el implementador
 
-- **No tocar el compilador** (`compiler.ts`) — eso es TASK-15.
-- **No tocar el system prompt** — eso es TASK-16.
-- **No crear UI** — eso es TASK-17/18.
+- **No tocar el compilador** (`compiler.ts`) — eso es TASK-20.
+- **No tocar el system prompt** — eso es TASK-21.
+- **No crear UI** — eso es TASK-22/23.
 - El objetivo de esta task es exclusivamente el contrato de tipos y validación.
 - Si al extender `trackSchema` algún test de `validation.test.ts` existente falla,
   es una regresión — investigar antes de continuar.

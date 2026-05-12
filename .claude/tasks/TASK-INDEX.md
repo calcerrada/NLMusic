@@ -1,4 +1,4 @@
-# TASK-INDEX — Índice de tareas Sprint 2
+# TASK-INDEX — Índice de tareas
 
 > Orden de ejecución, dependencias y estado histórico de todas las tasks.
 
@@ -22,7 +22,7 @@ grep -l "^status: pending" .claude/tasks/TASK-*.md
 
 ---
 
-## Estado y orden de ejecución
+## Sprint 1 y 2 — Completados
 
 - [x] **TASK-01** — Validación e2e (auditoría) · `c462484` · 2026-04-23
 - [x] **TASK-02** — Robustez inicialización Strudel (EC-010) · `c462484` · 2026-04-23
@@ -38,7 +38,7 @@ grep -l "^status: pending" .claude/tasks/TASK-*.md
 - [x] **TASK-12** — Tercera pestaña config/guía (+ toggle editor avanzado/simple) · `5e655c9` · 2026-05-05
 - [x] **TASK-13** — Multiidioma UI (ES / EN) · `1aacc87` · 2026-05-08
 
-**Dependencias clave:**
+**Dependencias clave Sprint 1–2:**
 - TASK-04 desbloquea TASK-05 y TASK-07
 - TASK-05 desbloquea TASK-06
 - TASK-07 desbloquea TASK-08
@@ -46,4 +46,28 @@ grep -l "^status: pending" .claude/tasks/TASK-*.md
 - TASK-10 desbloquea TASK-11
 - TASK-08, TASK-10 y TASK-11 desbloquean TASK-12
 - TASK-12 desbloquea TASK-13
+
+---
+
+## Sprint de Refactorización — Orden de ejecución recomendado
+
+- [ ] **TASK-14** — Correctness: hotfixes y robustez del contrato _(sin dependencias, ejecutar primero)_
+- [ ] **TASK-15** — Store: División en Zustand slices _(depende de TASK-14 — riesgo alto, ejecutar último del sprint)_
+- [ ] **TASK-16** — StrudelContext: prop drilling + estado mutable de módulo _(depende de TASK-14)_
+- [ ] **TASK-17** — Performance: suscripciones reactivas y prompt caching _(depende de TASK-14)_
+- [ ] **TASK-18** — Limpieza de UI y convenciones de código _(sin dependencias)_
+
+**Orden recomendado:** TASK-14 → TASK-18 → TASK-17 → TASK-16 → TASK-15
+
+Ejecutar `npm test` + `npm run build` al finalizar cada task antes de continuar.
+
+---
+
+## Sprint 3 — Sintetizador por pista (post-refactor)
+
+- [ ] **TASK-19** — Schema: TrackParams _(antes TASK-14; bloqueante para TASK-20..23)_
+- [ ] **TASK-20** — Compilador: soporte TrackParams en `compileToStrudel` _(depende de TASK-19)_
+- [ ] **TASK-21** — LLM: system prompt y adapter para parámetros de síntesis _(depende de TASK-19)_
+- [ ] **TASK-22** — UI: acordeón de parámetros por pista _(depende de TASK-19)_
+- [ ] **TASK-23** — UI: controles avanzados (filtro, efectos, panorama) _(depende de TASK-22)_
 
