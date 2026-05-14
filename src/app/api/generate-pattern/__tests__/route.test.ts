@@ -28,6 +28,14 @@ function makeRequest(body: unknown): Request {
   })
 }
 
+function makeRawRequest(body: string): Request {
+  return new Request('http://localhost/api/generate-pattern', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body,
+  })
+}
+
 describe('POST /api/generate-pattern — TASK-06 contract coherence', () => {
   const originalEnv = process.env
 
@@ -171,6 +179,93 @@ describe('POST /api/generate-pattern — TASK-06 contract coherence', () => {
         language: 'mixed',
       })
     )
+  })
+
+  it('TASK-14: returns 400 when turns exceeds 40 entries', async () => {
+    const tooManyTurns = Array.from({ length: 41 }, (_, i) => ({
+      role: i % 2 === 0 ? 'user' : 'assistant',
+      content: `turn ${i}`,
+    }))
+
+    const response = await POST(makeRequest({
+      prompt: 'valid prompt',
+      context: { turns: tooManyTurns },
+    }) as never)
+
+    const payload = await response.json()
+    expect(response.status).toBe(400)
+    expect(payload.ok).toBe(false)
+    expect(runV0PipelineMock).not.toHaveBeenCalled()
+  })
+
+  it('TASK-14: returns 400 when the request body contains invalid JSON', async () => {
+    const response = await POST(makeRawRequest('{"prompt": invalid-json}') as never)
+
+    const payload = await response.json()
+    expect(response.status).toBe(400)
+    expect(payload).toEqual({ ok: false, error: 'Body inválido' })
+    expect(runV0PipelineMock).not.toHaveBeenCalled()
+  })
+
+  it('TASK-14: returns 400 when previous.tracks has invalid shape', async () => {
+    const response = await POST(makeRequest({
+      prompt: 'valid prompt',
+      context: {
+        previous: {
+          bpm: 120,
+          tracks: [{ notATrack: true, garbage: 'field' }],
+        },
+      },
+    }) as never)
+
+    const payload = await response.json()
+    expect(response.status).toBe(400)
+    expect(payload.ok).toBe(false)
+    expect(runV0PipelineMock).not.toHaveBeenCalled()
+  })
+
+  it('TASK-14: returns 400 when previous.strudelCode exceeds the allowed size', async () => {
+    const response = await POST(makeRequest({
+      prompt: 'valid prompt',
+      context: {
+        previous: {
+          bpm: 120,
+          tracks: [],
+          strudelCode: 'x'.repeat(5001),
+        },
+      },
+    }) as never)
+
+    const payload = await response.json()
+    expect(response.status).toBe(400)
+    expect(payload.ok).toBe(false)
+    expect(runV0PipelineMock).not.toHaveBeenCalled()
+  })
+
+  it('TASK-14: returns 400 when previous.tracks[0].steps has wrong length (not 16)', async () => {
+    const response = await POST(makeRequest({
+      prompt: 'valid prompt',
+      context: {
+        previous: {
+          bpm: 120,
+          tracks: [
+            {
+              id: 'k1',
+              name: 'Kick',
+              steps: [1, 0, 0, 0, 1, 0, 0, 0],  // 8 steps — domain requires exactly 16
+              volume: 0.8,
+              muted: false,
+              solo: false,
+            },
+          ],
+        },
+      },
+    }) as never)
+
+    const payload = await response.json()
+    expect(response.status).toBe(400)
+    expect(payload.ok).toBe(false)
+    expect(runV0PipelineMock).not.toHaveBeenCalled()
   })
 
   it('TASK-09: propagates codeMode and clears previous when in code mode', async () => {

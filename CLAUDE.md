@@ -118,6 +118,8 @@ Si la task introdujo cambios estructurales (nuevas dependencias, nuevos director
 
 - Multiidioma UI ES / EN: selector discreto en TransportBar, detección del navegador, diccionario tipado centralizado, hook `useTranslation` reactivo, persistencia en localStorage (TASK-13)
 
+- Correctness: hotfixes y robustez del contrato del request/API/store/editor, incluyendo validación temprana del body, límite persistido de `turns` y reutilización de `strudelCode` precompilado (TASK-14)
+
 **Pendiente Sprint 2 (orden de ejecución):**
 - TASK-11 — Hap highlighting en tiempo real (flash de tokens al sonar) sobre el editor CodeMirror
 

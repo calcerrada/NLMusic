@@ -167,6 +167,38 @@ describe('sessionStore — Zustand store with business logic', () => {
         'track-5',
       ])
     })
+
+    it('TASK-14: addTrack is a no-op when 5 tracks already exist', () => {
+      const existingTracks: Track[] = Array.from({ length: 5 }, (_, index) => ({
+        id: `track-${index + 1}`,
+        name: `Track ${index + 1}`,
+        steps: Array(16).fill(0) as (0 | 1)[],
+        volume: 0.8,
+        muted: false,
+        solo: false,
+      }))
+
+      useSessionStore.setState({
+        tracks: existingTracks,
+        currentCode: 'existing-code',
+      })
+
+      expect(() =>
+        useSessionStore.getState().addTrack({
+          id: 'track-6',
+          name: 'Track 6',
+          steps: Array(16).fill(0) as (0 | 1)[],
+          volume: 0.8,
+          muted: false,
+          solo: false,
+        }),
+      ).not.toThrow()
+
+      const state = useSessionStore.getState()
+      expect(state.tracks).toHaveLength(5)
+      expect(state.tracks.map((track) => track.id)).toEqual(existingTracks.map((track) => track.id))
+      expect(state.currentCode).toBe('existing-code')
+    })
   })
 
   describe('setBpm — BPM clamping [60, 220]', () => {
@@ -450,6 +482,29 @@ describe('sessionStore — Zustand store with business logic', () => {
       expect(useSessionStore.getState().currentCode).toBeDefined()
       expect(useSessionStore.getState().currentCode.length).toBeGreaterThan(0)
     })
+
+    it('TASK-14: reuses the provided precompiled strudelCode verbatim', () => {
+      const sentinelCode = 'stack(s("bd").gain(0.9)).slow(4).cpm(120.00)'
+      const pattern: TrackJSON = {
+        bpm: 120,
+        tracks: [
+          {
+            id: 'kick-1',
+            name: 'Kick',
+            tag: 'kick',
+            steps: Array(16).fill(0) as (0 | 1)[],
+            volume: 0.8,
+            muted: false,
+            solo: false,
+          },
+        ],
+        strudelCode: sentinelCode,
+      }
+
+      useSessionStore.getState().loadPattern(pattern)
+
+      expect(useSessionStore.getState().currentCode).toBe(sentinelCode)
+    })
   })
 
   describe('addTurn — session history', () => {
@@ -707,6 +762,22 @@ describe('sessionStore — Zustand store with business logic', () => {
       const state = useSessionStore.getState()
       expect(state.bpm).toBe(150)
       expect(state.tracks).toHaveLength(1)
+    })
+
+    it('TASK-14: persists only the last 40 turns', () => {
+      localStorage.removeItem('nlmusic-session')
+
+      Array.from({ length: 45 }, (_, index) => index).forEach((index) => {
+        useSessionStore.getState().addTurn(index % 2 === 0 ? 'user' : 'assistant', `turn ${index + 1}`)
+      })
+
+      const raw = localStorage.getItem('nlmusic-session')
+      expect(raw).not.toBeNull()
+
+      const persisted = JSON.parse(raw as string)
+      expect(persisted.state.turns).toHaveLength(40)
+      expect(persisted.state.turns[0]).toEqual({ role: 'assistant', content: 'turn 6' })
+      expect(persisted.state.turns[39]).toEqual({ role: 'user', content: 'turn 45' })
     })
   })
 

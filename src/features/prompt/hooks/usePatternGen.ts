@@ -2,33 +2,7 @@
 
 import { useCallback, useState } from 'react';
 import { useSessionStore } from '@store/sessionStore';
-import { compileToStrudel } from '@features/audio';
-import type { Track, TrackJSON } from '@lib/types';
-
-/**
- * Infere una etiqueta instrumental cuando el origen no la define explícitamente.
- * Esto mantiene colores/comportamiento consistentes en UI aunque el payload llegue incompleto.
- */
-function inferTag(track: { name: string; sample?: string; tag?: string }): string {
-  const base = `${track.tag ?? ''} ${track.sample ?? ''} ${track.name}`.toLowerCase();
-  if (base.includes('kick') || base.includes('bd')) return 'kick';
-  if (base.includes('snare') || base.includes('sd')) return 'snare';
-  if (base.includes('hat') || base.includes('hh')) return 'hihat';
-  if (base.includes('clap') || base.includes('cp')) return 'clap';
-  if (base.includes('perc')) return 'perc';
-  return 'perc';
-}
-
-/**
- * Normaliza pasos y tag para trabajar con un TrackJSON estable en store/compilador.
- */
-function normalizeTrack(track: Track): Track {
-  return {
-    ...track,
-    tag: track.tag ?? inferTag(track),
-    steps: track.steps.map((step) => (step === 1 ? 1 : 0)) as (0 | 1)[],
-  };
-}
+import type { TrackJSON } from '@lib/types';
 
 /**
  * Ejecuta la transición de reintento desde estado ERROR.
@@ -111,30 +85,25 @@ export function usePatternGen() {
         throw new Error(payload.error ?? `HTTP ${response.status}`);
       }
 
+      // Pipeline already normalized tracks and compiled strudelCode in a single pass (BR-009).
+      // Reuse the payload directly — no client-side normalization or recompilation (FIX-6).
       const trackJson = payload.trackJson as TrackJSON;
-      const normalizedTracks = trackJson.tracks.map(normalizeTrack);
-      const normalizedPattern: TrackJSON = {
-        bpm: trackJson.bpm,
-        tracks: normalizedTracks,
-        strudelCode: compileToStrudel({ bpm: trackJson.bpm, tracks: normalizedTracks }),
-      };
-
-      loadPattern(normalizedPattern);
+      loadPattern(trackJson);
 
       if (payload.source === 'fallback') {
         // EC-001/EC-002: fallback válido informa sin forzar estado ERROR
         const fallbackMsg = payload.warning ?? 'LLM no disponible — patrón de fallback cargado';
         setInfo(fallbackMsg);
-        addTurn("assistant", `Fallback: ${normalizedTracks.length} pistas — ${fallbackMsg}`);
+        addTurn("assistant", `Fallback: ${trackJson.tracks.length} pistas — ${fallbackMsg}`);
       } else {
         // LLM success — surface any delta warnings (BR-005/BR-006)
         const warnings: string[] = Array.isArray(payload.warnings) ? payload.warnings : [];
         if (warnings.length > 0) {
           const warningText = warnings.join(" | ");
           setInfo(warningText);
-          addTurn("assistant", `Generado: ${normalizedTracks.length} pistas a ${normalizedPattern.bpm} BPM. Avisos: ${warningText}`);
+          addTurn("assistant", `Generado: ${trackJson.tracks.length} pistas a ${trackJson.bpm} BPM. Avisos: ${warningText}`);
         } else {
-          addTurn("assistant", `Generado: ${normalizedTracks.length} pistas a ${normalizedPattern.bpm} BPM`);
+          addTurn("assistant", `Generado: ${trackJson.tracks.length} pistas a ${trackJson.bpm} BPM`);
         }
       }
 

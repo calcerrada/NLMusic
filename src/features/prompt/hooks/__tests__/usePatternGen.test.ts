@@ -445,14 +445,17 @@ describe('usePatternGen — hook for LLM pattern generation', () => {
     })
   })
 
-  describe('normalization — track tag inference', () => {
-    it('infers tag correctly for kick patterns', async () => {
-      const responseWithoutTag: TrackJSON = {
+  describe('normalization — track tag preserved from pipeline', () => {
+    it('stores pipeline-normalized tag for kick patterns', async () => {
+      // Pipeline infers tag:'kick' from name:'Kick 909' before compiling.
+      // Hook must store the tag as-is — no extra client normalization.
+      const pipelineResponse: TrackJSON = {
         bpm: 120,
         tracks: [
           {
             id: 'kick-1',
             name: 'Kick 909',
+            tag: 'kick',
             steps: Array(16).fill(0) as (0 | 1)[],
             volume: 0.85,
             muted: false,
@@ -463,7 +466,7 @@ describe('usePatternGen — hook for LLM pattern generation', () => {
 
       vi.mocked(global.fetch).mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ ok: true, source: 'llm', trackJson: responseWithoutTag }),
+        json: async () => ({ ok: true, source: 'llm', trackJson: pipelineResponse }),
       } as any)
 
       const { result } = renderHook(() => usePatternGen())
@@ -473,7 +476,7 @@ describe('usePatternGen — hook for LLM pattern generation', () => {
       })
 
       const storedTrack = useSessionStore.getState().tracks[0]
-      expect(storedTrack.tag).toBeDefined()
+      expect(storedTrack.tag).toBe('kick')
     })
   })
 
@@ -549,6 +552,80 @@ describe('usePatternGen — hook for LLM pattern generation', () => {
 
       expect(body.context.previous).toBeDefined()
       expect(body.context.codeMode).toBeUndefined()
+    })
+  })
+
+  describe('BR-009 + FIX-6: single compilation, coherent tracks ↔ currentCode', () => {
+    it('stores pipeline-normalized tracks and their compiled strudelCode without modification', async () => {
+      // Pipeline normalizes name:'Kick' → tag:'kick' and compiles with 'bd'.
+      // The hook must store both unchanged — no extra normalization or recompilation.
+      const pipelineCode = 'stack(s("bd ~ ~ ~ bd ~ ~ ~ bd ~ ~ ~ bd ~ ~ ~").gain(0.90)).slow(4).cpm(120.00)'
+      const normalizedPayload: TrackJSON = {
+        bpm: 120,
+        tracks: [
+          {
+            id: 'k1',
+            name: 'Kick',
+            tag: 'kick',
+            steps: [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0],
+            volume: 0.9,
+            muted: false,
+            solo: false,
+          },
+        ],
+        strudelCode: pipelineCode,
+      }
+
+      vi.mocked(global.fetch).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ ok: true, source: 'llm', trackJson: normalizedPayload }),
+      } as any)
+
+      const { result } = renderHook(() => usePatternGen())
+
+      await act(async () => {
+        await result.current.generate('kick drum')
+      })
+
+      const state = useSessionStore.getState()
+      expect(state.tracks[0].tag).toBe('kick')
+      expect(state.currentCode).toBe(pipelineCode)
+    })
+
+    it('does not recompile on the client: currentCode equals the server strudelCode verbatim', async () => {
+      // Sentinel uses gain(0.9) — one decimal place.
+      // compileToStrudel always uses toFixed(2), so it would produce gain(0.90), not gain(0.9).
+      // If the hook recompiles, currentCode will contain gain(0.90) and the test fails.
+      // If the hook reuses the server's code unchanged, currentCode equals the sentinel exactly.
+      const sentinel = 'stack(s("bd ~ ~ ~ bd ~ ~ ~ bd ~ ~ ~ bd ~ ~ ~").gain(0.9)).slow(4).cpm(120.00)'
+      const payload: TrackJSON = {
+        bpm: 120,
+        tracks: [
+          {
+            id: 'k1',
+            name: 'Kick',
+            tag: 'kick',
+            steps: [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0],
+            volume: 0.9,
+            muted: false,
+            solo: false,
+          },
+        ],
+        strudelCode: sentinel,
+      }
+
+      vi.mocked(global.fetch).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ ok: true, source: 'llm', trackJson: payload }),
+      } as any)
+
+      const { result } = renderHook(() => usePatternGen())
+
+      await act(async () => {
+        await result.current.generate('kick drum')
+      })
+
+      expect(useSessionStore.getState().currentCode).toBe(sentinel)
     })
   })
 

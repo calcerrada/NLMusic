@@ -4,6 +4,28 @@ import { ClaudeAdapter } from '@lib/llm/adapters/claude.adapter';
 import { runV0Pipeline } from '@lib/llm/pipeline';
 import type { SessionContext } from '@lib/types';
 
+/**
+ * Snapshot acotado de pistas previas aceptado por la API.
+ * Replica solo el subset que el pipeline necesita para evitar payloads arbitrarios o desproporcionados.
+ * @see BR-011
+ */
+const previousTrackSchema = z.object({
+  id: z.string().min(1).max(100),
+  name: z.string().min(1).max(100),
+  tag: z.string().max(50).optional(),
+  sample: z.string().max(100).optional(),
+  steps: z.array(z.union([z.literal(0), z.literal(1)])).length(16),
+  volume: z.number().min(0).max(1),
+  muted: z.boolean(),
+  solo: z.boolean(),
+});
+
+/**
+ * Valida el body completo antes de tocar el provider o el pipeline.
+ * Los límites mantienen el contrato acotado y evitan abusos de tamaño en turns, tracks y código Strudel.
+ * @see BR-002
+ * @see BR-011
+ */
 const requestBodySchema = z.object({
   prompt: z.string().min(1).max(2000),
   context: z.object({
@@ -13,8 +35,8 @@ const requestBodySchema = z.object({
     })).max(40).optional(),
     previous: z.object({
       bpm: z.number().int().min(60).max(220),
-      tracks: z.array(z.any()).max(5),
-      strudelCode: z.string().optional(),
+      tracks: z.array(previousTrackSchema).max(5),
+      strudelCode: z.string().max(5000).optional(),
     }).optional(),
     codeMode: z.object({
       enabled: z.literal(true),
@@ -35,7 +57,17 @@ const requestBodySchema = z.object({
  */
 export async function POST(req: NextRequest) {
   try {
-    const parsed = requestBodySchema.safeParse(await req.json());
+    let rawBody: unknown;
+    try {
+      rawBody = await req.json();
+    } catch {
+      return NextResponse.json(
+        { ok: false, error: 'Body inválido' },
+        { status: 400 }
+      );
+    }
+
+    const parsed = requestBodySchema.safeParse(rawBody);
     if (!parsed.success) {
       return NextResponse.json(
         { ok: false, error: 'Body inválido', details: parsed.error.flatten() },
@@ -64,7 +96,11 @@ export async function POST(req: NextRequest) {
     const model = process.env.ANTHROPIC_MODEL;
     const provider = new ClaudeAdapter({ apiKey, model });
 
-    // BR-009: propagar codeMode si existe; en code mode no incluir `previous` obsoleto
+    /**
+     * Normaliza el contexto para que el pipeline reciba una sola fuente de verdad.
+     * En modo código se descarta `previous` porque puede haber quedado obsoleto respecto al editor.
+     * @see BR-009
+     */
     const sessionContext: SessionContext = {
       turns: context?.turns ?? [],
       previous: context?.codeMode ? undefined : context?.previous,

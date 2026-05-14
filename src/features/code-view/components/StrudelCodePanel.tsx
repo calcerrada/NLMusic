@@ -89,7 +89,7 @@ export function StrudelCodePanel({ strudel }: StrudelCodePanelProps) {
 
   /**
    * Recibe el código crudo del editor en cada tecla y aplica el debounce de 600 ms.
-   * Misma lógica que el textarea anterior — sólo el origen del evento cambió.
+    * Misma lógica que el textarea anterior: Strudel valida en runtime y este panel solo refleja el resultado.
    *
    * @see BR-009 Cambio en editor → actualiza grid si el código es parseable
    * @see EC-006 Error de Strudel → informar sin romper el audio anterior
@@ -117,7 +117,7 @@ export function StrudelCodePanel({ strudel }: StrudelCodePanelProps) {
           return;
         }
 
-        // EC-006: evaluar el código; Strudel lanzará si la sintaxis es inválida
+  // EC-006: la validación real ocurre en play(); si falla, el catch deja el audio anterior intacto.
         await strudel.play(newCode, isPlaying);
 
         if (parsedPattern) {

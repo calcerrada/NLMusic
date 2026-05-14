@@ -78,6 +78,27 @@ describe('validatePatternDelta — BR-004 incremental operations', () => {
     expect(result.operations).toHaveLength(4)
   })
 
+  it('TASK-14: preserves an explicit track tag from the LLM payload', () => {
+    const result = validatePatternDelta({
+      bpm: 128,
+      operations: [
+        {
+          type: 'add',
+          track: {
+            ...minimalTrack,
+            id: 'kick-tagged',
+            tag: 'kick',
+          },
+        },
+      ],
+    })
+
+    expect(result.operations[0]).toMatchObject({
+      type: 'add',
+      track: expect.objectContaining({ tag: 'kick' }),
+    })
+  })
+
   it('throws when operations is empty', () => {
     expect(() => validatePatternDelta({ bpm: 128, operations: [] })).toThrow()
   })

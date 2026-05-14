@@ -2,6 +2,11 @@ import { z } from "zod";
 
 const stepSchema = z.union([z.literal(0), z.literal(1)]);
 
+/**
+ * Contrato mínimo de una pista aceptada desde el LLM.
+ * `tag` permanece opcional para conservar compatibilidad con respuestas antiguas sin perderlo cuando sí llega.
+ * @see BR-002
+ */
 const trackSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),

@@ -124,7 +124,7 @@ const defaultKickTrack: Track = {
   id: "kick-1",
   name: "Kick",
   tag: "kick",
-  steps: [0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0] as (0 | 1)[],
+  steps: [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0] as (0 | 1)[],
   volume: 0.8,
   muted: false,
   solo: false,
@@ -294,6 +294,12 @@ export const useSessionStore = create<SessionStore>()(
             turns: [...state.turns, { role, content }],
           })),
 
+        /**
+         * Carga un patrón completo ya validado y reutiliza su código precompilado cuando existe.
+         * Evita recompilar dos veces la misma respuesta y fuerza un estado coherente PLAYING/IDLE según pistas.
+         * @see BR-002
+         * @see BR-006
+         */
         loadPattern: (pattern) =>
           set(() => {
             const nextTracks = pattern.tracks.slice(0, 5); // BR-006 defensa
@@ -310,7 +316,12 @@ export const useSessionStore = create<SessionStore>()(
             };
           }),
 
-        // BR-004/BR-006: añade pista al final; no-op si el límite ya fue alcanzado
+        /**
+         * Añade una pista en una sola transacción del store para no leer y escribir sobre snapshots distintos.
+         * Si ya se alcanzó el máximo, la acción se degrada a no-op sin romper el estado actual.
+         * @see BR-004
+         * @see BR-006
+         */
         addTrack: (track) =>
           set((state) => {
             if (state.tracks.length >= 5) return state;
@@ -336,7 +347,11 @@ export const useSessionStore = create<SessionStore>()(
           }));
           return true;
         },
-
+              /**
+               * Persiste solo el estado necesario para restaurar la sesión del usuario.
+               * El historial se recorta a 40 turnos para evitar crecimiento indefinido en localStorage.
+               * @see BR-003
+               */
         /**
          * Elimina una pista por id de forma destructiva e irreversible.
          * Si era la última pista, fuerza transición a IDLE al dejar isPlaying en false.
