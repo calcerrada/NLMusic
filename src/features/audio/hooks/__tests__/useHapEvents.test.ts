@@ -120,7 +120,7 @@ describe('useHapEvents', () => {
     expect(atTime).toBe(4);
     expect(styledHaps).toHaveLength(64);
     // Hook applies a uniform background flash — per-instrument colour outline is not implemented.
-    expect(styledHaps[0].value?.markcss).toContain('background-color:rgba(0,255,200,0.18)');
+    expect(styledHaps[0].value?.markcss).toContain('background-color:rgba(0,255,200,0.35)');
   });
 
   it('does not re-run updateMiniLocations when miniLocations reference is unchanged', async () => {
