@@ -1,7 +1,7 @@
 ---
 id: TASK-14
 status: done
-completed_commit: pending-fill-after-commit
+completed_commit: 4a1f3a3
 completed_date: 2026-05-14
 ---
 
