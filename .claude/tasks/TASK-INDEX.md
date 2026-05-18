@@ -53,7 +53,7 @@ grep -l "^status: pending" .claude/tasks/TASK-*.md
 
 - [x] **TASK-14** — Correctness: hotfixes y robustez del contrato · `4a1f3a3` · 2026-05-14
 - [x] **TASK-15** — Store: División en Zustand slices · `dd083e4` · 2026-05-18
-- [x] **TASK-16** — StrudelContext: prop drilling + estado mutable de módulo _(depende de TASK-14)_ · `pending-fill-after-commit` · 2026-05-18
+- [x] **TASK-16** — StrudelContext: prop drilling + estado mutable de módulo _(depende de TASK-14)_ · `7f3b0dd` · 2026-05-18
 - [ ] **TASK-17** — Performance: suscripciones reactivas y prompt caching _(depende de TASK-14)_ ← siguiente
 - [ ] **TASK-18** — Limpieza de UI y convenciones de código _(sin dependencias)_
 
