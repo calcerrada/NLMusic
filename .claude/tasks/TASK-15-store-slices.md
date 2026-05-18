@@ -1,7 +1,7 @@
 ---
 id: TASK-15
 status: done
-completed_commit: pending-fill-after-commit
+completed_commit: dd083e4
 completed_date: 2026-05-18
 ---
 
