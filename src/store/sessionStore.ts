@@ -2,438 +2,46 @@
 
 import { create } from "zustand";
 import { devtools, persist } from "zustand/middleware";
-import type { Track, TrackJSON } from "@lib/types";
 import type { Language } from "@lib/i18n";
-import { compileToStrudel } from "@features/audio/compiler";
+import type { UiState as _UiState, EditorMode as _EditorMode } from "./helpers";
+import { createTracksSlice, type TracksSlice } from "./slices/tracksSlice";
+import { createAudioSlice, type AudioSlice } from "./slices/audioSlice";
+import { createUiSlice, type UiSlice } from "./slices/uiSlice";
+import { createSessionSlice, type SessionSlice } from "./slices/sessionSlice";
+import { createEditorSlice, type EditorSlice } from "./slices/editorSlice";
+
+// Re-export types that consumers import from this module
+export type { UiState, EditorMode } from "./helpers";
 
 /**
- * Detecta el idioma preferido del navegador con fallback seguro.
- *
- * Algoritmo:
- * 1. Si navigator.language comienza con 'en' → retorna 'en'
- * 2. Cualquier otro caso (incluyendo 'es', 'fr', 'de', ...) → fallback a 'es'
- * 3. Si no existe navigator (SSR) → fallback a 'es'
- *
- * Esta función se ejecuta solo una vez al inicializar el store.
- * El cambio de idioma posterior es manual vía setLanguage().
- *
- * @returns 'es' o 'en' según navigator.language o fallback a 'es'
- * @see TASK-13 Multiidioma UI — detección automática del navegador
+ * Estado unificado de sesión construido por composición de slices.
+ * Mantiene estable la API pública para consumidores de useSessionStore.
  */
-function detectLanguage(): Language {
-  if (typeof navigator === 'undefined') return 'es'
-  return navigator.language.startsWith('en') ? 'en' : 'es'
-}
-
-type ActiveTab = "sequencer" | "code" | "config";
-export type UiState = "idle" | "loading" | "playing" | "paused" | "error";
-export type EditorMode = "advanced" | "simple";
+export type SessionStore = TracksSlice & AudioSlice & UiSlice & SessionSlice & EditorSlice;
 
 /**
- * Deriva el estado visual principal a partir de pistas y reproducción real.
- * Evita estados inconsistentes cuando cambian pistas o transporte por separado.
- *
- * @param tracks - Pistas activas en sesión (0..5).
- * @param isPlaying - Flag de reproducción del motor actual.
- * @returns Estado de UI coherente para la máquina global.
- * @see EC-007 Sin pistas, la app debe volver a IDLE
+ * Subconjunto persistido en localStorage para rehidratación de sesión.
+ * Excluye estado efímero de UI/transporte para evitar incoherencias al recargar.
  */
-function deriveUiState(tracks: Track[], isPlaying: boolean): UiState {
-  if (tracks.length === 0) {
-    return "idle";
-  }
-
-  return isPlaying ? "playing" : "paused";
-}
-
 interface PersistedState {
   bpm: number;
-  tracks: Track[];
+  tracks: SessionStore["tracks"];
   turns: { role: "user" | "assistant"; content: string }[];
-  editorMode: EditorMode;
+  editorMode: _EditorMode;
   highlightingEnabled: boolean;
   hapVisualizationEnabled: boolean;
   language: Language;
 }
-
-export interface SessionStore {
-  tracks: Track[];
-  bpm: number;
-  isPlaying: boolean;
-  activeTab: ActiveTab;
-  currentCode: string;
-  turns: { role: "user" | "assistant"; content: string }[];
-  uiState: UiState;
-  lastError: string | null;
-  lastPrompt: string | null;
-
-  isCodeManuallyEdited: boolean;
-  editorMode: EditorMode;
-  highlightingEnabled: boolean;
-  hapVisualizationEnabled: boolean;
-  language: Language;
-  promptDraft: string | null;
-
-  setTracks: (tracks: Track[]) => void;
-  setBpm: (bpm: number) => void;
-  setPlaying: (value: boolean) => void;
-  setActiveTab: (tab: ActiveTab) => void;
-  setCurrentCode: (code: string) => void;
-  // BR-009: set code from manual editor edit (marks isCodeManuallyEdited)
-  setManualCode: (code: string) => void;
-  syncCodePattern: (pattern: TrackJSON, code: string) => void;
-  toggleStep: (trackId: string, stepIndex: number) => void;
-  setVolume: (trackId: string, volume: number) => void;
-  toggleMute: (trackId: string) => void;
-  toggleSolo: (trackId: string) => void;
-  addTurn: (role: "user" | "assistant", content: string) => void;
-  loadPattern: (pattern: TrackJSON) => void;
-  // BR-004: acciones incrementales para testing/debug y uso desde applyDelta
-  addTrack: (track: Track) => void;
-  updateTrack: (id: string, patch: Partial<Track>) => boolean;
-  // BR-007: eliminar pista — destructivo, irreversible, sin confirmación
-  deleteTrack: (id: string) => void;
-  // BR-003: estado ERROR — mantener estado, informar, ofrecer reintento
-  startLoading: () => void;
-  setError: (message: string) => void;
-  clearError: () => void;
-  setLastPrompt: (prompt: string) => void;
-  retry: () => string | null;
-  setEditorMode: (mode: EditorMode) => void;
-  setHighlightingEnabled: (enabled: boolean) => void;
-  setHapVisualizationEnabled: (enabled: boolean) => void;
-  // TASK-13: cambio de idioma manual — causa rerender inmediato sin reload
-  setLanguage: (lang: Language) => void;
-  setPromptDraft: (text: string | null) => void;
-}
-
-/**
- * Compila el estado actual del secuenciador a código Strudel ejecutable.
- * Se usa tras cambios locales (toggle, volumen, delete) sin invocar al LLM.
- *
- * @param bpm - Tempo en BPM, limitado a 60-220 por el store.
- * @param tracks - Pistas activas de la sesión (máximo 5 por BR-006).
- * @returns Código Strudel listo para evaluación incremental.
- * @see BR-001 La actualización de código no debe cortar el audio existente
- */
-function compileCode(bpm: number, tracks: Track[]): string {
-  return compileToStrudel({ bpm, tracks });
-}
-
-const defaultKickTrack: Track = {
-  id: "kick-1",
-  name: "Kick",
-  tag: "kick",
-  steps: [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0] as (0 | 1)[],
-  volume: 0.8,
-  muted: false,
-  solo: false,
-};
-
-const initialTracks: Track[] = [defaultKickTrack];
-const initialBpm = 138;
 
 export const useSessionStore = create<SessionStore>()(
   devtools(
     persist(
-      (set, get) => ({
-        tracks: initialTracks,
-        bpm: initialBpm,
-        isPlaying: false,
-        activeTab: "sequencer",
-        currentCode: compileCode(initialBpm, initialTracks),
-        isCodeManuallyEdited: false,
-        turns: [],
-        uiState: deriveUiState(initialTracks, false),
-        lastError: null,
-        lastPrompt: null,
-        editorMode: "advanced",
-        highlightingEnabled: true,
-        hapVisualizationEnabled: true,
-        language: detectLanguage(),
-        promptDraft: null,
-
-        // EC-007: al eliminar la última pista forzamos IDLE y detenemos reproducción.
-        setTracks: (tracks) =>
-          set((state) => {
-            const nextIsPlaying = tracks.length > 0 ? state.isPlaying : false;
-            return {
-              tracks,
-              currentCode: compileCode(state.bpm, tracks),
-              isCodeManuallyEdited: false,
-              isPlaying: nextIsPlaying,
-              uiState: deriveUiState(tracks, nextIsPlaying),
-            };
-          }),
-
-        setBpm: (bpm) =>
-          set((state) => {
-            const clamped = Math.min(220, Math.max(60, bpm));
-            return {
-              bpm: clamped,
-              currentCode: compileCode(clamped, state.tracks),
-              isCodeManuallyEdited: false,
-            };
-          }),
-
-        // BR-001: el transporte actualiza estado sin tocar el patrón activo.
-        setPlaying: (value) =>
-          set((state) => ({
-            isPlaying: value,
-            uiState: deriveUiState(state.tracks, value),
-          })),
-        /**
-         * Cambia la pestaña activa del layout principal sin alterar audio ni patron.
-         */
-        setActiveTab: (tab) => set({ activeTab: tab }),
-        setCurrentCode: (code) => set({ currentCode: code }),
-        // BR-009: edición manual del editor — marca el grid como desincronizado con el código
-        setManualCode: (code) => set({ currentCode: code, isCodeManuallyEdited: true }),
-        /**
-         * Actualiza el store con un patrón parseado desde el código Strudel editado manualmente.
-         * Restablece `isCodeManuallyEdited` a false porque el grid vuelve a estar sincronizado.
-         * Limita las pistas a 5 defensivamente (BR-006).
-         *
-         * @see BR-009 Grid/editor sincronizados — este action representa el flujo Editor → Grid
-         */
-        syncCodePattern: (pattern, code) =>
-          set((state) => {
-            // BR-006: cap defensivo — el código parseado no puede superar 5 pistas
-            const nextTracks = pattern.tracks.slice(0, 5);
-            const nextIsPlaying = nextTracks.length > 0 ? state.isPlaying : false;
-
-            return {
-              bpm: pattern.bpm,
-              tracks: nextTracks,
-              currentCode: code,
-              // BR-009: el grid vuelve a reflejar el código — limpiar la marca de edición manual
-              isCodeManuallyEdited: false,
-              isPlaying: nextIsPlaying,
-              uiState: deriveUiState(nextTracks, nextIsPlaying),
-            };
-          }),
-
-        toggleStep: (trackId, stepIndex) =>
-          set((state) => {
-            const tracks = state.tracks.map((track) => {
-              if (track.id !== trackId) {
-                return track;
-              }
-
-              const steps = track.steps.map((value, index) => {
-                if (index !== stepIndex) {
-                  return value;
-                }
-                return value === 1 ? 0 : 1;
-              }) as (0 | 1)[];
-
-              return { ...track, steps };
-            });
-
-            return {
-              tracks,
-              currentCode: compileCode(state.bpm, tracks),
-              isCodeManuallyEdited: false,
-            };
-          }),
-
-        setVolume: (trackId, volume) =>
-          set((state) => {
-            const tracks = state.tracks.map((track) =>
-              track.id === trackId
-                ? { ...track, volume: Math.max(0, Math.min(1, volume)) }
-                : track,
-            );
-
-            return {
-              tracks,
-              currentCode: compileCode(state.bpm, tracks),
-              isCodeManuallyEdited: false,
-            };
-          }),
-
-        toggleMute: (trackId) =>
-          set((state) => {
-            const tracks = state.tracks.map((track) =>
-              track.id === trackId ? { ...track, muted: !track.muted } : track,
-            );
-
-            return {
-              tracks,
-              currentCode: compileCode(state.bpm, tracks),
-              isCodeManuallyEdited: false,
-            };
-          }),
-
-        toggleSolo: (trackId) =>
-          set((state) => {
-            const target = state.tracks.find((track) => track.id === trackId);
-            if (!target) {
-              return state;
-            }
-
-            const shouldUnsolo = target.solo;
-            const tracks = state.tracks.map((track) => {
-              if (shouldUnsolo) {
-                return track.id === trackId ? { ...track, solo: false } : track;
-              }
-              return track.id === trackId
-                ? { ...track, solo: true }
-                : { ...track, solo: false };
-            });
-
-            return {
-              tracks,
-              currentCode: compileCode(state.bpm, tracks),
-              isCodeManuallyEdited: false,
-            };
-          }),
-
-        addTurn: (role, content) =>
-          set((state) => ({
-            turns: [...state.turns, { role, content }],
-          })),
-
-        /**
-         * Carga un patrón completo ya validado y reutiliza su código precompilado cuando existe.
-         * Evita recompilar dos veces la misma respuesta y fuerza un estado coherente PLAYING/IDLE según pistas.
-         * @see BR-002
-         * @see BR-006
-         */
-        loadPattern: (pattern) =>
-          set(() => {
-            const nextTracks = pattern.tracks.slice(0, 5); // BR-006 defensa
-            // FIX-6: reusar código ya compilado por usePatternGen para evitar doble compilación
-            const code = pattern.strudelCode ?? compileCode(pattern.bpm, nextTracks);
-            return {
-              bpm: pattern.bpm,
-              tracks: nextTracks,
-              currentCode: code,
-              isCodeManuallyEdited: false,
-              isPlaying: nextTracks.length > 0,
-              uiState: nextTracks.length > 0 ? "playing" : "idle",
-              lastError: null,
-            };
-          }),
-
-        /**
-         * Añade una pista en una sola transacción del store para no leer y escribir sobre snapshots distintos.
-         * Si ya se alcanzó el máximo, la acción se degrada a no-op sin romper el estado actual.
-         * @see BR-004
-         * @see BR-006
-         */
-        addTrack: (track) =>
-          set((state) => {
-            if (state.tracks.length >= 5) return state;
-            const nextTracks = [...state.tracks, track];
-            return {
-              tracks: nextTracks,
-              currentCode: compileCode(state.bpm, nextTracks),
-              isCodeManuallyEdited: false,
-            };
-          }),
-
-        // BR-004: modifica pista por id; devuelve false si no existe (BR-005)
-        updateTrack: (id, patch) => {
-          const { tracks } = get();
-          if (!tracks.some((t) => t.id === id)) {
-            return false;
-          }
-          const nextTracks = tracks.map((t) => (t.id === id ? { ...t, ...patch } : t));
-          set((state) => ({
-            tracks: nextTracks,
-            currentCode: compileCode(state.bpm, nextTracks),
-            isCodeManuallyEdited: false,
-          }));
-          return true;
-        },
-              /**
-               * Persiste solo el estado necesario para restaurar la sesión del usuario.
-               * El historial se recorta a 40 turnos para evitar crecimiento indefinido en localStorage.
-               * @see BR-003
-               */
-        /**
-         * Elimina una pista por id de forma destructiva e irreversible.
-         * Si era la última pista, fuerza transición a IDLE al dejar isPlaying en false.
-         *
-         * @see BR-007 Eliminar sin confirmación y sin deshacer
-         * @see BR-001 Si quedan pistas, solo recompila código; el audio continúa en siguiente ciclo
-         * @see EC-007 Última pista en PLAYING -> IDLE
-         * @see EC-008 Última pista en PAUSED -> IDLE
-         */
-        deleteTrack: (id) =>
-          set((state) => {
-            const nextTracks = state.tracks.filter((t) => t.id !== id);
-            // EC-007/EC-008: al quedar 0 pistas, el transporte debe caer a IDLE.
-            const nextIsPlaying = nextTracks.length > 0 ? state.isPlaying : false;
-            return {
-              tracks: nextTracks,
-              currentCode: compileCode(state.bpm, nextTracks),
-              isCodeManuallyEdited: false,
-              isPlaying: nextIsPlaying,
-              uiState: deriveUiState(nextTracks, nextIsPlaying),
-            };
-          }),
-
-        // BR-003: submit o retry entra en LOADING sin perder el patrón actual.
-        startLoading: () =>
-          set({ uiState: "loading", lastError: null }),
-
-        // BR-003: transición → ERROR, guarda mensaje y prompt para reintento
-        setError: (message) =>
-          set({ uiState: "error", lastError: message }),
-
-        // BR-003: al salir de ERROR recuperamos el estado real del audio/patrón.
-        clearError: () =>
-          set((state) => ({
-            uiState: deriveUiState(state.tracks, state.isPlaying),
-            lastError: null,
-          })),
-
-        setLastPrompt: (prompt) =>
-          set({ lastPrompt: prompt }),
-
-        // BR-003: ERROR -> LOADING reutilizando el último prompt fallido.
-        retry: () => {
-          const prompt = get().lastPrompt;
-          if (!prompt) {
-            return null;
-          }
-
-          set({ uiState: "loading", lastError: null });
-          return prompt;
-        },
-
-        /**
-         * Alterna entre editor avanzado y simple con efecto inmediato en el panel de codigo.
-         */
-        setEditorMode: (mode) => set({ editorMode: mode }),
-        /**
-         * Habilita o deshabilita colorizacion sintactica sin afectar compilacion ni playback.
-         */
-        setHighlightingEnabled: (enabled) => set({ highlightingEnabled: enabled }),
-        /**
-         * Controla el overlay visual de haps; afecta solo visualizacion del editor avanzado.
-         *
-         * @see BR-001 Toggle visual no debe interrumpir audio
-         */
-        setHapVisualizationEnabled: (enabled) => set({ hapVisualizationEnabled: enabled }),
-        /**
-         * Cambia el idioma de la UI de forma inmediata.
-         *
-         * El nuevo idioma persiste en localStorage automaticamente.
-         * Causa un rerender global sin recargar la pagina — todos los
-         * componentes que usan useTranslation() se actualizan instantaneamente.
-         *
-         * @see TASK-13 Multiidioma UI — selector discreto en TransportBar
-         */
-        setLanguage: (lang) => set({ language: lang }),
-        /**
-         * Buffer temporal para insertar ejemplos desde ConfigTab en PromptBox sin auto-submit.
-         *
-         * @see BR-010 Prefill no equivale a generar patron
-         */
-        setPromptDraft: (text) => set({ promptDraft: text }),
+      (...args) => ({
+        ...createTracksSlice(...args),
+        ...createAudioSlice(...args),
+        ...createUiSlice(...args),
+        ...createSessionSlice(...args),
+        ...createEditorSlice(...args),
       }),
       {
         name: "nlmusic-session",

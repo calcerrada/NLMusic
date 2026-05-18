@@ -120,6 +120,8 @@ Si la task introdujo cambios estructurales (nuevas dependencias, nuevos director
 
 - Correctness: hotfixes y robustez del contrato del request/API/store/editor, incluyendo validación temprana del body, límite persistido de `turns` y reutilización de `strudelCode` precompilado (TASK-14)
 
+- Store dividido en 5 Zustand slices (`tracks`, `audio`, `ui`, `session`, `editor`) con `useSessionStore` estable y persistencia selectiva mantenida (TASK-15)
+
 **Pendiente Sprint 2 (orden de ejecución):**
 - TASK-11 — Hap highlighting en tiempo real (flash de tokens al sonar) sobre el editor CodeMirror
 
