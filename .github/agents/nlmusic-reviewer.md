@@ -113,7 +113,7 @@ Cambios requeridos:
 Restricciones:
 - No tocar archivos fuera de los listados
 - No introducir features nuevas
-- No hacer revision de test unitarios.
+- No hacer revision de test unitarios, de esto se encarga el agente nlmusic-tester.
 - Preservar BR-001 en todos los caminos afectados
 
 Verificacion obligatoria:
