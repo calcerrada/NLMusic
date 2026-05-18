@@ -8,4 +8,5 @@ out/
 build/
 .turbo/
 *.tsbuildinfo
+next-env.d.ts
 
