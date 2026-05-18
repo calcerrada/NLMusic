@@ -8,9 +8,7 @@ const stubbedHush = vi.fn()
 const stubbedEvaluate = vi.fn().mockResolvedValue(undefined)
 const stubbedTranspiler = vi.fn(() => ({ miniLocations: [] as [number, number][] }))
 
-// useStrudel uses module-level _hush/_evaluate singletons.
-// We must reset modules between tests that need a clean slate,
-// then re-import the hook so those variables start as null again.
+// We reset/reload the module so each test controls its own import mocks.
 // vi.doMock (not vi.mock) is used here because it is NOT hoisted — it only
 // takes effect for imports that happen AFTER the call, which is what we need
 // after vi.resetModules().
@@ -154,6 +152,40 @@ describe('useStrudel — EC-010: Strudel initialization robustness', () => {
       expect(result.current.getHapState().getTime()).toBe(12.5)
 
       vi.unstubAllGlobals()
+    })
+
+    it('does not leak mutable runtime state after remount (TASK-16)', async () => {
+      const firstPattern = { id: 'first-pattern' }
+      const secondPattern = { id: 'second-pattern' }
+      const evaluateMock = vi
+        .fn()
+        .mockResolvedValueOnce(firstPattern)
+        .mockResolvedValueOnce(secondPattern)
+
+      stubbedEvaluate.mockImplementation((...args: unknown[]) => evaluateMock(...args))
+
+      const useStrudel = await freshUseStrudel()
+      const first = renderHook(() => useStrudel())
+
+      await waitFor(() => {
+        expect(first.result.current.isReady).toBe(true)
+      })
+
+      await first.result.current.play('note("c")')
+      expect(first.result.current.getHapState().pattern).toEqual(firstPattern)
+
+      first.unmount()
+
+      const second = renderHook(() => useStrudel())
+      await waitFor(() => {
+        expect(second.result.current.isReady).toBe(true)
+      })
+
+      // New hook instance starts with clean mutable state.
+      expect(second.result.current.getHapState().pattern).toBeNull()
+
+      await second.result.current.play('note("d")')
+      expect(second.result.current.getHapState().pattern).toEqual(secondPattern)
     })
   })
 })

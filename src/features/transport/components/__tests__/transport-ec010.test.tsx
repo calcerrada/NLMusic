@@ -5,6 +5,7 @@ import { PlayControls } from '../PlayControls'
 import { BpmControl } from '../BpmControl'
 import { TransportBar } from '../TransportBar'
 import type { UseStrudelResult } from '@features/audio'
+import { StrudelContext } from '@features/audio'
 import { useSessionStore } from '@store/sessionStore'
 
 // Mock Zustand store
@@ -53,6 +54,14 @@ function makeErrorStrudel(errorMsg = 'AudioContext not available'): UseStrudelRe
   })
 }
 
+function renderWithStrudel(ui: React.ReactElement, strudel: UseStrudelResult) {
+  return render(
+    <StrudelContext.Provider value={strudel}>
+      {ui}
+    </StrudelContext.Provider>
+  )
+}
+
 describe('PlayControls — EC-010: disabled when initError', () => {
   beforeEach(() => {
     mockStore()
@@ -61,21 +70,21 @@ describe('PlayControls — EC-010: disabled when initError', () => {
 
   describe('normal state', () => {
     it('renders Play and Stop buttons', () => {
-      render(<PlayControls strudel={makeStrudel()} />)
+      renderWithStrudel(<PlayControls />, makeStrudel())
 
       expect(screen.getByLabelText('Play')).toBeInTheDocument()
       expect(screen.getByLabelText('Stop')).toBeInTheDocument()
     })
 
     it('Play and Stop are enabled when motor is ready', () => {
-      render(<PlayControls strudel={makeStrudel()} />)
+      renderWithStrudel(<PlayControls />, makeStrudel())
 
       expect(screen.getByLabelText('Play')).not.toBeDisabled()
       expect(screen.getByLabelText('Stop')).not.toBeDisabled()
     })
 
     it('Play and Stop have no title tooltip when enabled', () => {
-      render(<PlayControls strudel={makeStrudel()} />)
+      renderWithStrudel(<PlayControls />, makeStrudel())
 
       expect(screen.getByLabelText('Play').getAttribute('title')).toBeFalsy()
       expect(screen.getByLabelText('Stop').getAttribute('title')).toBeFalsy()
@@ -84,32 +93,36 @@ describe('PlayControls — EC-010: disabled when initError', () => {
 
   describe('EC-010: disabled={true}', () => {
     it('Play button is disabled when disabled prop is true', () => {
-      render(
-        <PlayControls strudel={makeErrorStrudel()} disabled disabledReason={DISABLED_REASON} />
+      renderWithStrudel(
+        <PlayControls disabled disabledReason={DISABLED_REASON} />,
+        makeErrorStrudel()
       )
 
       expect(screen.getByLabelText('Play')).toBeDisabled()
     })
 
     it('Stop button is disabled when disabled prop is true', () => {
-      render(
-        <PlayControls strudel={makeErrorStrudel()} disabled disabledReason={DISABLED_REASON} />
+      renderWithStrudel(
+        <PlayControls disabled disabledReason={DISABLED_REASON} />,
+        makeErrorStrudel()
       )
 
       expect(screen.getByLabelText('Stop')).toBeDisabled()
     })
 
     it('Play button has tooltip explaining why it is disabled', () => {
-      render(
-        <PlayControls strudel={makeErrorStrudel()} disabled disabledReason={DISABLED_REASON} />
+      renderWithStrudel(
+        <PlayControls disabled disabledReason={DISABLED_REASON} />,
+        makeErrorStrudel()
       )
 
       expect(screen.getByLabelText('Play').getAttribute('title')).toBe(DISABLED_REASON)
     })
 
     it('Stop button has tooltip explaining why it is disabled', () => {
-      render(
-        <PlayControls strudel={makeErrorStrudel()} disabled disabledReason={DISABLED_REASON} />
+      renderWithStrudel(
+        <PlayControls disabled disabledReason={DISABLED_REASON} />,
+        makeErrorStrudel()
       )
 
       expect(screen.getByLabelText('Stop').getAttribute('title')).toBe(DISABLED_REASON)
@@ -117,8 +130,9 @@ describe('PlayControls — EC-010: disabled when initError', () => {
 
     it('clicking Play does not call play() when disabled', () => {
       const strudelMock = makeErrorStrudel()
-      render(
-        <PlayControls strudel={strudelMock} disabled disabledReason={DISABLED_REASON} />
+      renderWithStrudel(
+        <PlayControls disabled disabledReason={DISABLED_REASON} />,
+        strudelMock
       )
 
       fireEvent.click(screen.getByLabelText('Play'))
@@ -128,8 +142,9 @@ describe('PlayControls — EC-010: disabled when initError', () => {
 
     it('clicking Stop does not call stop() when disabled', () => {
       const strudelMock = makeErrorStrudel()
-      render(
-        <PlayControls strudel={strudelMock} disabled disabledReason={DISABLED_REASON} />
+      renderWithStrudel(
+        <PlayControls disabled disabledReason={DISABLED_REASON} />,
+        strudelMock
       )
 
       fireEvent.click(screen.getByLabelText('Stop'))
@@ -198,25 +213,25 @@ describe('TransportBar — EC-010: engine status indicator', () => {
   })
 
   it('shows "● Listo" when isReady=true and no error', () => {
-    render(<TransportBar strudel={makeStrudel({ isReady: true })} />)
+    renderWithStrudel(<TransportBar />, makeStrudel({ isReady: true }))
 
     expect(screen.getByText('● Listo')).toBeInTheDocument()
   })
 
   it('shows "○ Iniciando…" when isReady=false and no error', () => {
-    render(<TransportBar strudel={makeStrudel({ isReady: false, initError: null })} />)
+    renderWithStrudel(<TransportBar />, makeStrudel({ isReady: false, initError: null }))
 
     expect(screen.getByText('○ Iniciando…')).toBeInTheDocument()
   })
 
   it('shows "✕ Error" when initError is set', () => {
-    render(<TransportBar strudel={makeErrorStrudel()} />)
+    renderWithStrudel(<TransportBar />, makeErrorStrudel())
 
     expect(screen.getByText('✕ Error')).toBeInTheDocument()
   })
 
   it('passes disabled=true to PlayControls when initError is set', () => {
-    render(<TransportBar strudel={makeErrorStrudel()} />)
+    renderWithStrudel(<TransportBar />, makeErrorStrudel())
 
     // Both Play and Stop buttons should be disabled
     expect(screen.getByLabelText('Play')).toBeDisabled()
@@ -224,7 +239,7 @@ describe('TransportBar — EC-010: engine status indicator', () => {
   })
 
   it('passes disabled=true to BpmControl when initError is set', () => {
-    render(<TransportBar strudel={makeErrorStrudel()} />)
+    renderWithStrudel(<TransportBar />, makeErrorStrudel())
 
     const bpmButtons = screen.getAllByRole('button').filter(
       (btn) => btn.getAttribute('title') === DISABLED_REASON
@@ -234,7 +249,7 @@ describe('TransportBar — EC-010: engine status indicator', () => {
   })
 
   it('does not disable controls when motor is ready', () => {
-    render(<TransportBar strudel={makeStrudel({ isReady: true })} />)
+    renderWithStrudel(<TransportBar />, makeStrudel({ isReady: true }))
 
     expect(screen.getByLabelText('Play')).not.toBeDisabled()
     expect(screen.getByLabelText('Stop')).not.toBeDisabled()
@@ -248,7 +263,7 @@ describe('TransportBar — TASK-13: language selector', () => {
   })
 
   it('renders both ES and EN selector buttons', () => {
-    render(<TransportBar strudel={makeStrudel()} />)
+    renderWithStrudel(<TransportBar />, makeStrudel())
 
     expect(screen.getByRole('button', { name: 'es' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'en' })).toBeInTheDocument()
@@ -257,7 +272,7 @@ describe('TransportBar — TASK-13: language selector', () => {
   it('clicking EN button calls setLanguage("en") without page reload', () => {
     const setLanguageMock = vi.fn()
     mockStore({ setLanguage: setLanguageMock })
-    render(<TransportBar strudel={makeStrudel()} />)
+    renderWithStrudel(<TransportBar />, makeStrudel())
 
     fireEvent.click(screen.getByRole('button', { name: 'en' }))
 
@@ -268,7 +283,7 @@ describe('TransportBar — TASK-13: language selector', () => {
   it('clicking ES button calls setLanguage("es") without page reload', () => {
     const setLanguageMock = vi.fn()
     mockStore({ setLanguage: setLanguageMock })
-    render(<TransportBar strudel={makeStrudel()} />)
+    renderWithStrudel(<TransportBar />, makeStrudel())
 
     fireEvent.click(screen.getByRole('button', { name: 'es' }))
 
@@ -278,14 +293,14 @@ describe('TransportBar — TASK-13: language selector', () => {
 
   it('shows Spanish engine-status text when language is "es"', () => {
     mockStore({ language: 'es' })
-    render(<TransportBar strudel={makeStrudel({ isReady: true })} />)
+    renderWithStrudel(<TransportBar />, makeStrudel({ isReady: true }))
 
     expect(screen.getByText('● Listo')).toBeInTheDocument()
   })
 
   it('shows English engine-status text when language is "en"', () => {
     mockStore({ language: 'en' })
-    render(<TransportBar strudel={makeStrudel({ isReady: true })} />)
+    renderWithStrudel(<TransportBar />, makeStrudel({ isReady: true }))
 
     expect(screen.getByText('● Ready')).toBeInTheDocument()
   })

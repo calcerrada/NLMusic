@@ -2,6 +2,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import type { UseStrudelResult } from '@features/audio'
+import { StrudelContext } from '@features/audio'
 import { StrudelCodePanel } from '../StrudelCodePanel'
 import { useSessionStore } from '@store/sessionStore'
 
@@ -47,6 +48,14 @@ function makeStrudel(): UseStrudelResult {
   }
 }
 
+function renderWithStrudel(ui: React.ReactElement, strudel: UseStrudelResult) {
+  return render(
+    <StrudelContext.Provider value={strudel}>
+      {ui}
+    </StrudelContext.Provider>
+  )
+}
+
 describe('StrudelCodePanel TASK-12 editor mode toggle', () => {
   beforeEach(() => {
     useSessionStore.setState({
@@ -64,7 +73,7 @@ describe('StrudelCodePanel TASK-12 editor mode toggle', () => {
   })
 
   it('renders advanced editor when editorMode is advanced', () => {
-    render(<StrudelCodePanel strudel={makeStrudel()} />)
+    renderWithStrudel(<StrudelCodePanel />, makeStrudel())
 
     expect(screen.getByTestId('advanced-editor')).toBeInTheDocument()
   })
@@ -72,7 +81,7 @@ describe('StrudelCodePanel TASK-12 editor mode toggle', () => {
   it('renders simple textarea and not CodeMirror when editorMode is simple', () => {
     useSessionStore.setState({ editorMode: 'simple' })
 
-    render(<StrudelCodePanel strudel={makeStrudel()} />)
+    renderWithStrudel(<StrudelCodePanel />, makeStrudel())
 
     expect(screen.queryByTestId('advanced-editor')).not.toBeInTheDocument()
     expect(screen.getByRole('textbox', { name: 'Código Strudel editable' })).toBeInTheDocument()

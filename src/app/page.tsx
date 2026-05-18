@@ -7,12 +7,16 @@ import { ConfigTab } from '@features/config';
 import { PromptBox } from '@features/prompt';
 import { useSessionStore } from '@store/sessionStore';
 import { useTranslation } from '@lib/i18n';
-import { useStrudel } from '@features/audio';
+import { StrudelProvider, useStrudelContext } from '@features/audio';
 
-export default function Home() {
+/**
+ * Ensambla la shell principal consumiendo Strudel via Context en lugar de props.
+ * Si falla la inicializacion, mantiene visible un banner persistente y bloquea acciones dependientes del motor.
+ * @see EC-010
+ */
+function HomeContent() {
   const t = useTranslation();
-  // Single useStrudel instance — passed down to avoid double-init
-  const strudel = useStrudel();
+  const strudel = useStrudelContext();
   const activeTab = useSessionStore((s) => s.activeTab);
   const setActiveTab = useSessionStore((s) => s.setActiveTab);
 
@@ -21,7 +25,7 @@ export default function Home() {
 
   return (
     <main className="relative min-h-screen bg-bg">
-      <TransportBar strudel={strudel} />
+      <TransportBar />
 
       {/* EC-010: banner persistente no cerrable — sin Strudel la app no es funcional */}
       {strudel.initError && (
@@ -98,12 +102,20 @@ export default function Home() {
 
         <section className="min-h-0 flex-1 overflow-hidden">
           {activeTab === 'sequencer' && <TrackZone />}
-          {activeTab === 'code' && <StrudelCodePanel strudel={strudel} />}
-          {activeTab === 'config' && <ConfigTab strudel={strudel} />}
+          {activeTab === 'code' && <StrudelCodePanel />}
+          {activeTab === 'config' && <ConfigTab />}
         </section>
       </div>
 
       <PromptBox motorAvailable={!strudel.initError} />
     </main>
+  );
+}
+
+export default function Home() {
+  return (
+    <StrudelProvider>
+      <HomeContent />
+    </StrudelProvider>
   );
 }

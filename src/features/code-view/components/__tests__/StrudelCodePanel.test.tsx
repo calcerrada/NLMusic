@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { compileToStrudel } from '@features/audio/compiler'
 import { useSessionStore } from '@store/sessionStore'
 import type { UseStrudelResult } from '@features/audio'
+import { StrudelContext } from '@features/audio'
 import { StrudelCodePanel } from '../StrudelCodePanel'
 
 vi.mock('next/dynamic', () => ({
@@ -60,6 +61,14 @@ function makeStrudel(playImpl?: UseStrudelResult['play']): UseStrudelResult {
   }
 }
 
+function renderWithStrudel(ui: React.ReactElement, strudel: UseStrudelResult) {
+  return render(
+    <StrudelContext.Provider value={strudel}>
+      {ui}
+    </StrudelContext.Provider>
+  )
+}
+
 describe('StrudelCodePanel TASK-08 editable sync', () => {
   beforeEach(() => {
     vi.useFakeTimers()
@@ -90,7 +99,7 @@ describe('StrudelCodePanel TASK-08 editable sync', () => {
     })
     const strudel = makeStrudel()
 
-    render(<StrudelCodePanel strudel={strudel} />)
+    renderWithStrudel(<StrudelCodePanel />, strudel)
 
     fireEvent.change(screen.getByLabelText('Código Strudel editable'), {
       target: { value: nextCode },
@@ -113,7 +122,7 @@ describe('StrudelCodePanel TASK-08 editable sync', () => {
     const lastCode = 'note("d")'
     const strudel = makeStrudel()
 
-    render(<StrudelCodePanel strudel={strudel} />)
+    renderWithStrudel(<StrudelCodePanel />, strudel)
 
     const textarea = screen.getByLabelText('Código Strudel editable')
 
@@ -144,7 +153,7 @@ describe('StrudelCodePanel TASK-08 editable sync', () => {
     const customCode = 'note("c a f e")'
     const strudel = makeStrudel()
 
-    render(<StrudelCodePanel strudel={strudel} />)
+    renderWithStrudel(<StrudelCodePanel />, strudel)
 
     fireEvent.change(screen.getByLabelText('Código Strudel editable'), {
       target: { value: customCode },
@@ -164,7 +173,7 @@ describe('StrudelCodePanel TASK-08 editable sync', () => {
     const initialCode = useSessionStore.getState().currentCode
     const strudel = makeStrudel(vi.fn().mockRejectedValue(new Error('parse error')))
 
-    render(<StrudelCodePanel strudel={strudel} />)
+    renderWithStrudel(<StrudelCodePanel />, strudel)
 
     fireEvent.change(screen.getByLabelText('Código Strudel editable'), {
       target: { value: 'note("c")' },
@@ -184,7 +193,7 @@ describe('StrudelCodePanel TASK-08 editable sync', () => {
     const playSpy = vi.fn().mockRejectedValue(new SyntaxError('Unexpected token ","'))
     const strudel = makeStrudel(playSpy)
 
-    render(<StrudelCodePanel strudel={strudel} />)
+    renderWithStrudel(<StrudelCodePanel />, strudel)
 
     fireEvent.change(screen.getByLabelText('Código Strudel editable'), {
       target: { value: 'stack(,)' },
@@ -208,7 +217,7 @@ describe('StrudelCodePanel TASK-08 editable sync', () => {
       initError: 'Motor de audio no disponible',
     }
 
-    render(<StrudelCodePanel strudel={strudel} />)
+    renderWithStrudel(<StrudelCodePanel />, strudel)
 
     fireEvent.change(screen.getByLabelText('Código Strudel editable'), {
       target: { value: nextCode },
@@ -230,7 +239,7 @@ describe('StrudelCodePanel TASK-08 editable sync', () => {
     })
     const strudel = makeStrudel()
 
-    render(<StrudelCodePanel strudel={strudel} />)
+    renderWithStrudel(<StrudelCodePanel />, strudel)
 
     const textarea = screen.getByLabelText('Código Strudel editable') as HTMLTextAreaElement
     expect(textarea.value).toBe(useSessionStore.getState().currentCode)
@@ -262,7 +271,7 @@ describe('StrudelCodePanel TASK-08 editable sync', () => {
       .mockRejectedValueOnce(new Error('parse error'))
       .mockResolvedValueOnce(undefined)
 
-    render(<StrudelCodePanel strudel={strudel} />)
+    renderWithStrudel(<StrudelCodePanel />, strudel)
 
     const textarea = screen.getByLabelText('Código Strudel editable')
 

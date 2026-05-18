@@ -4,10 +4,9 @@ import { useEffect, useRef, useState } from 'react';
 import { Play, Square } from 'lucide-react';
 import { useSessionStore } from '@store/sessionStore';
 import { useTranslation } from '@lib/i18n';
-import type { UseStrudelResult } from '@features/audio';
+import { useStrudelContext } from '@features/audio';
 
 interface PlayControlsProps {
-  strudel: UseStrudelResult;
   disabled?: boolean;
   disabledReason?: string;
 }
@@ -23,9 +22,9 @@ interface PlayControlsProps {
  * @see BR-001 El audio nunca se interrumpe — actualiza en el siguiente ciclo
  * @see EC-010 Motor no disponible — botones deshabilitados con tooltip
  */
-export function PlayControls({ strudel, disabled = false, disabledReason }: PlayControlsProps) {
+export function PlayControls({ disabled = false, disabledReason }: PlayControlsProps) {
   const t = useTranslation();
-  const { play, stop, isReady } = strudel;
+  const { play, stop, isReady } = useStrudelContext();
   const isPlaying = useSessionStore((s) => s.isPlaying);
   const setPlaying = useSessionStore((s) => s.setPlaying);
   const currentCode = useSessionStore((s) => s.currentCode);

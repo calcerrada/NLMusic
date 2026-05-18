@@ -3,14 +3,10 @@
 import { useSessionStore } from '@store/sessionStore';
 import type { Language } from '@lib/i18n';
 import { useTranslation } from '@lib/i18n';
-import type { UseStrudelResult } from '@features/audio';
+import { useStrudelContext } from '@features/audio';
 import { PlayControls } from './PlayControls';
 import { BpmControl } from './BpmControl';
 import { BarIndicator } from './BarIndicator';
-
-interface TransportBarProps {
-  strudel: UseStrudelResult;
-}
 
 /**
  * Barra de transporte fija en la parte superior.
@@ -21,8 +17,9 @@ interface TransportBarProps {
  *
  * @see EC-010 Motor no disponible — controles deshabilitados con tooltip explicativo
  */
-export function TransportBar({ strudel }: TransportBarProps) {
+export function TransportBar() {
   const t = useTranslation();
+  const strudel = useStrudelContext();
   const hasInitError = strudel.initError !== null;
   const isPlaying = useSessionStore((s) => s.isPlaying);
   const language = useSessionStore((s) => s.language);
@@ -86,7 +83,7 @@ export function TransportBar({ strudel }: TransportBarProps) {
           className={hasInitError ? 'opacity-45' : ''}
           style={{ margin: 0, padding: 0, border: 0, display: 'contents' }}
         >
-          <PlayControls strudel={strudel} disabled={hasInitError} disabledReason={disabledReason} />
+          <PlayControls disabled={hasInitError} disabledReason={disabledReason} />
           <BpmControl disabled={hasInitError} disabledReason={disabledReason} />
         </div>
 

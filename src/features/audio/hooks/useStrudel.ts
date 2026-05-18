@@ -25,7 +25,7 @@ export interface UseStrudelResult {
   stop: () => void;
   isReady: boolean;
   initError: string | null;
-  /** TASK-11: stable getter for hap highlighting — reads module-level state, no re-renders. */
+  /** TASK-11/TASK-16: getter estable para hap highlighting desde estado en ref, sin re-renders. */
   getHapState: () => HapState;
 }
 
@@ -39,15 +39,14 @@ type InitStrudelWithState = (options: {
   onUpdateState?: (state: StrudelRuntimeState) => void;
 }) => void;
 
-// References captured from the dynamic import of @strudel/web.
-// Module-level to survive re-renders without re-initialising Strudel.
-let _hush: (() => void) | null = null;
-let _evaluate: ((code: string, autoplay?: boolean) => Promise<unknown>) | null = null;
-let _transpiler: ((code: string) => { miniLocations?: [number, number][] } | null | undefined) | null = null;
-// TASK-11: hap highlighting helpers
-let _getTime: (() => number) | null = null;
-let _lastPattern: unknown = null;
-let _lastMiniLocations: [number, number][] = [];
+interface StrudelInternalState {
+  hush: (() => void) | null;
+  evaluate: ((code: string, autoplay?: boolean) => Promise<unknown>) | null;
+  transpiler: ((code: string) => { miniLocations?: [number, number][] } | null | undefined) | null;
+  getTime: (() => number) | null;
+  lastPattern: unknown;
+  lastMiniLocations: [number, number][];
+}
 
 /**
  * Inicializa el motor de audio Strudel y expone play/stop.
@@ -67,6 +66,15 @@ export function useStrudel(): UseStrudelResult {
   const initialized = useRef(false);
   // Ref lets play() read current initError without stale closure
   const initErrorRef = useRef<string | null>(null);
+  // TASK-16: encapsula estado mutable del runtime por instancia del hook (sin estado global de modulo).
+  const internalRef = useRef<StrudelInternalState>({
+    hush: null,
+    evaluate: null,
+    transpiler: null,
+    getTime: null,
+    lastPattern: null,
+    lastMiniLocations: [],
+  });
 
   useEffect(() => {
     // Previene doble inicialización en StrictMode o remontajes
@@ -82,20 +90,22 @@ export function useStrudel(): UseStrudelResult {
           import('@strudel/transpiler'),
         ]);
 
+        const internal = internalRef.current;
+
         (mod.initStrudel as InitStrudelWithState)({
           prebake: () =>
             (globalThis as { samples?: (source: string) => void }).samples?.(
               'github:tidalcycles/dirt-samples',
             ),
           onUpdateState: (state: StrudelRuntimeState) => {
-            _lastMiniLocations = state.miniLocations ?? [];
+            internal.lastMiniLocations = state.miniLocations ?? [];
             if (state.pattern !== undefined) {
-              _lastPattern = state.pattern;
+              internal.lastPattern = state.pattern;
             }
           },
         });
 
-        _transpiler =
+        internal.transpiler =
           typeof transpilerRuntime.transpiler === 'function'
             ? transpilerRuntime.transpiler
             : null;
@@ -106,29 +116,29 @@ export function useStrudel(): UseStrudelResult {
           evaluate?: (code: string, autoplay?: boolean) => Promise<unknown>;
           getTime?: () => number;
         };
-        _hush = runtime.hush ?? null;
-        _evaluate = runtime.evaluate ?? null;
+        internal.hush = runtime.hush ?? null;
+        internal.evaluate = runtime.evaluate ?? null;
         // TASK-11: getTime is optional; some test mocks don't expose it.
         try {
-          _getTime = typeof runtime.getTime === 'function' ? runtime.getTime : null;
+          internal.getTime = typeof runtime.getTime === 'function' ? runtime.getTime : null;
         } catch {
-          _getTime = null;
+          internal.getTime = null;
         }
 
         // Also available on globalThis after initStrudel
         const g = globalThis as Record<string, unknown>;
-        if (!_hush && typeof g.hush === 'function') _hush = g.hush as () => void;
-        if (!_evaluate && typeof g.evaluate === 'function')
-          _evaluate = g.evaluate as (code: string, autoplay?: boolean) => Promise<unknown>;
-        if (!_getTime && typeof g.getTime === 'function') {
-          _getTime = g.getTime as () => number;
+        if (!internal.hush && typeof g.hush === 'function') internal.hush = g.hush as () => void;
+        if (!internal.evaluate && typeof g.evaluate === 'function')
+          internal.evaluate = g.evaluate as (code: string, autoplay?: boolean) => Promise<unknown>;
+        if (!internal.getTime && typeof g.getTime === 'function') {
+          internal.getTime = g.getTime as () => number;
         }
 
         console.log(
-          '[Strudel] ready — hush:', !!_hush,
-          'evaluate:', !!_evaluate,
-          'transpiler:', !!_transpiler,
-          'getTime:', !!_getTime,
+          '[Strudel] ready — hush:', !!internal.hush,
+          'evaluate:', !!internal.evaluate,
+          'transpiler:', !!internal.transpiler,
+          'getTime:', !!internal.getTime,
         );
         initErrorRef.current = null;
         setInitError(null);
@@ -160,22 +170,22 @@ export function useStrudel(): UseStrudelResult {
     if (initErrorRef.current !== null) {
       throw new Error(`Motor de audio no disponible: ${initErrorRef.current}`);
     }
-    // _evaluate es null mientras el import dinámico no ha resuelto
-    if (!_evaluate) {
+    const internal = internalRef.current;
+    if (!internal.evaluate) {
       throw new Error('Strudel no inicializado todavía');
     }
 
     try {
       // TASK-11: capture the returned Pattern for queryArc in the hap highlighting loop
-      const patternResult = await _evaluate(code, autoplay);
-      _lastPattern = patternResult;
+      const patternResult = await internal.evaluate(code, autoplay);
+      internal.lastPattern = patternResult;
 
       // TASK-11: derive token-level miniLocations from transpiler output.
-      if (_transpiler) {
-        const out = _transpiler(code);
-        _lastMiniLocations = out?.miniLocations ?? [];
+      if (internal.transpiler) {
+        const out = internal.transpiler(code);
+        internal.lastMiniLocations = out?.miniLocations ?? [];
       } else {
-        _lastMiniLocations = [];
+        internal.lastMiniLocations = [];
       }
 
     } catch (error) {
@@ -188,24 +198,24 @@ export function useStrudel(): UseStrudelResult {
   }, []);
 
   const stop = useCallback(() => {
-    if (_hush) {
-      _hush();
+    const internal = internalRef.current;
+    if (internal.hush) {
+      internal.hush();
       // TASK-11: clear pattern so the hap highlighting loop stops querying
-      _lastPattern = null;
-      _lastMiniLocations = [];
+      internal.lastPattern = null;
+      internal.lastMiniLocations = [];
       return;
     }
     console.warn('[Strudel] hush not available');
   }, []);
 
-  // TASK-11: stable getter that reads module-level hap state — never triggers re-renders.
-  // useCallback with empty deps ensures the reference is stable across renders.
+  // TASK-11: stable getter that reads ref-level hap state — never triggers re-renders.
   const getHapState = useCallback<() => HapState>(
     () => ({
-      pattern: _lastPattern,
-      miniLocations: _lastMiniLocations,
+      pattern: internalRef.current.lastPattern,
+      miniLocations: internalRef.current.lastMiniLocations,
       // BR-001: getTime reads the scheduler clock without touching React state
-      getTime: _getTime ?? (() => 0),
+      getTime: internalRef.current.getTime ?? (() => 0),
     }),
     [],
   );

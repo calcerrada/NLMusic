@@ -1,15 +1,10 @@
 'use client';
 
 import { useSessionStore } from '@store/sessionStore';
-import type { UseStrudelResult } from '@features/audio';
 import { SystemStatus } from './SystemStatus';
 import { PromptGuide } from './PromptGuide';
 import { KeyboardShortcuts } from './KeyboardShortcuts';
 import { EditorPreferences } from './EditorPreferences';
-
-interface ConfigTabProps {
-  strudel: UseStrudelResult;
-}
 
 /**
  * Orquesta la pestaña Configuración/Guía y conecta ejemplos con el flujo principal.
@@ -17,7 +12,7 @@ interface ConfigTabProps {
  *
  * @see BR-010 Prefill de prompt no implica llamada al LLM
  */
-export function ConfigTab({ strudel }: ConfigTabProps) {
+export function ConfigTab() {
   const setActiveTab = useSessionStore((s) => s.setActiveTab);
   const setPromptDraft = useSessionStore((s) => s.setPromptDraft);
 
@@ -34,7 +29,7 @@ export function ConfigTab({ strudel }: ConfigTabProps) {
 
   return (
     <div className="flex h-full flex-col gap-6 overflow-y-auto px-5 py-5">
-      <SystemStatus strudel={strudel} />
+      <SystemStatus />
       <PromptGuide onExampleClick={handleExampleClick} />
       <KeyboardShortcuts />
       <EditorPreferences />

@@ -2,6 +2,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import type { UseStrudelResult } from '@features/audio'
+import { StrudelContext } from '@features/audio'
 import { ConfigTab } from '../ConfigTab'
 import { PromptBox } from '@features/prompt'
 import { useSessionStore } from '@store/sessionStore'
@@ -39,6 +40,14 @@ function makeStrudel(overrides: Partial<UseStrudelResult> = {}): UseStrudelResul
   }
 }
 
+function renderWithStrudel(ui: React.ReactElement, strudel: UseStrudelResult) {
+  return render(
+    <StrudelContext.Provider value={strudel}>
+      {ui}
+    </StrudelContext.Provider>
+  )
+}
+
 describe('ConfigTab TASK-12', () => {
   beforeEach(() => {
     useSessionStore.setState({
@@ -56,7 +65,7 @@ describe('ConfigTab TASK-12', () => {
   })
 
   it('renders system status from store and Strudel readiness', () => {
-    render(<ConfigTab strudel={makeStrudel({ isReady: false })} />)
+    renderWithStrudel(<ConfigTab />, makeStrudel({ isReady: false }))
 
     expect(screen.getByText('Estado del sistema')).toBeInTheDocument()
     expect(screen.getByText('○ No iniciado')).toBeInTheDocument()
@@ -67,11 +76,12 @@ describe('ConfigTab TASK-12', () => {
   it('injects clicked prompt example into PromptBox and returns to Sequencer tab', async () => {
     const strudel = makeStrudel()
 
-    render(
+    renderWithStrudel(
       <>
-        <ConfigTab strudel={strudel} />
+        <ConfigTab />
         <PromptBox motorAvailable />
       </>,
+      strudel,
     )
 
     fireEvent.click(screen.getByRole('button', { name: /Un kick 909 en 4x4 techno a 138 BPM/i }))
@@ -86,7 +96,7 @@ describe('ConfigTab TASK-12', () => {
   })
 
   it('persists editor preferences and hides hap toggle in simple mode', () => {
-    render(<ConfigTab strudel={makeStrudel()} />)
+    renderWithStrudel(<ConfigTab />, makeStrudel())
 
     fireEvent.click(screen.getByRole('button', { name: 'Simple (textarea)' }))
     expect(useSessionStore.getState().editorMode).toBe('simple')
@@ -106,7 +116,7 @@ describe('ConfigTab TASK-12', () => {
   })
 
   it('renders reserved API key space for v1+', () => {
-    render(<ConfigTab strudel={makeStrudel()} />)
+    renderWithStrudel(<ConfigTab />, makeStrudel())
 
     expect(screen.getByText('Configuración de API key — disponible en v1+')).toBeInTheDocument()
   })

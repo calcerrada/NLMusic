@@ -6,9 +6,9 @@ import { useSessionStore } from '@store/sessionStore';
 import { useTranslation } from '@lib/i18n';
 import {
   parseStrudelToTrackJson,
-  type UseStrudelResult,
   useBeatClock,
   useHapEvents,
+  useStrudelContext,
 } from '@features/audio';
 import type { StrudelEditorRef } from './StrudelEditor';
 
@@ -17,10 +17,6 @@ const StrudelEditor = dynamic(
   () => import('./StrudelEditor').then((m) => m.StrudelEditor),
   { ssr: false },
 );
-
-interface StrudelCodePanelProps {
-  strudel: UseStrudelResult;
-}
 
 /**
  * Panel de código Strudel con editor CodeMirror 6 y sincronización bidireccional.
@@ -34,7 +30,8 @@ interface StrudelCodePanelProps {
  * @see BR-009 Editor y grid sincronizados bidireccionalmente
  * @see EC-006 Código inválido → error inline no bloqueante, audio anterior intacto
  */
-export function StrudelCodePanel({ strudel }: StrudelCodePanelProps) {
+export function StrudelCodePanel() {
+  const strudel = useStrudelContext();
   const t = useTranslation();
   const currentCode = useSessionStore((s) => s.currentCode);
   const tracks = useSessionStore((s) => s.tracks);

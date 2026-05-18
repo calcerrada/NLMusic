@@ -2,11 +2,7 @@
 
 import { useSessionStore } from '@store/sessionStore';
 import { useTranslation } from '@lib/i18n';
-import type { UseStrudelResult } from '@features/audio';
-
-interface SystemStatusProps {
-  strudel: UseStrudelResult;
-}
+import { useStrudelContext } from '@features/audio';
 
 /**
  * Renderiza un snapshot de estado operativo para diagnostico rapido en vivo.
@@ -15,8 +11,9 @@ interface SystemStatusProps {
  * @see BR-006 Limite de 5 pistas visible para el usuario
  * @see EC-010 Estado del motor refleja si la app puede reproducir audio
  */
-export function SystemStatus({ strudel }: SystemStatusProps) {
+export function SystemStatus() {
   const t = useTranslation();
+  const strudel = useStrudelContext();
   const bpm = useSessionStore((s) => s.bpm);
   const tracks = useSessionStore((s) => s.tracks);
 

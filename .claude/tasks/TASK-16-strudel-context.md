@@ -1,6 +1,8 @@
 ---
 id: TASK-16
-status: pending
+status: done
+completed_commit: pending-fill-after-commit
+completed_date: 2026-05-18
 ---
 
 # TASK-16 — StrudelContext: eliminar prop drilling y estado mutable de módulo

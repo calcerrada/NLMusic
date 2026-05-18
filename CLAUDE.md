@@ -122,6 +122,8 @@ Si la task introdujo cambios estructurales (nuevas dependencias, nuevos director
 
 - Store dividido en 5 Zustand slices (`tracks`, `audio`, `ui`, `session`, `editor`) con `useSessionStore` estable y persistencia selectiva mantenida (TASK-15)
 
+- StrudelContext sin prop drilling y estado mutable encapsulado por instancia en `useRef` para el runtime de audio (TASK-16)
+
 **Pendiente Sprint 2 (orden de ejecución):**
 - TASK-11 — Hap highlighting en tiempo real (flash de tokens al sonar) sobre el editor CodeMirror
 
